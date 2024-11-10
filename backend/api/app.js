@@ -2,7 +2,6 @@ const express = require('express');
 const connectDB = require('../db'); // import the db connection
 
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Connect to the database
 connectDB();
@@ -10,6 +9,10 @@ connectDB();
 app.get('/', (req, res) => {
   res.send('Hello from Express!');
 });
+
+// Export the express app for Vercel
+module.exports = app;
+
 
 // Not needed as vercel expects serverless functions to export a request handler.
 // app.listen(PORT, () => {
