@@ -180,3 +180,4 @@ logs
 
 # Build and cache
 frontend/build/
+.vercel
