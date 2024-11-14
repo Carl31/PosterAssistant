@@ -1,0 +1,16 @@
+{
+    "text": {
+        "make": "Toyota",
+        "model": "Corolla",
+        "year": "2022",
+        "description": "A reliable and fuel-efficient sedan, perfect for city driving."
+    },
+    "template": {
+        "path": "D:/Documents/GithubRepos/PosterAssistant/templates/",
+        "name": "PosterAssistant-PngAndText.psd"
+    },
+    "photo": {
+        "path": "D:/Documents/GithubRepos/PosterAssistant/photos/",
+        "name": "user_photo.png"
+    }
+}
