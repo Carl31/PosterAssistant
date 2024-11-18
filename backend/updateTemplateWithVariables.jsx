@@ -23,10 +23,10 @@ try {
         }
 
         // Access data fields safely
-        var make = data.text.make || "Unknown Make";
-        var model = data.text.model || "Unknown Model";
-        var year = data.text.year || "Unknown Year";
-        var description = data.text.description || "No Description";
+        var make = data.vehicle.make || "Unknown Make";
+        var model = data.vehicle.model || "Unknown Model";
+        var year = data.vehicle.year || "Unknown Year";
+        var description = data.vehicle.description || "No Description";
         var templatePath = data.template.path + data.template.name;
         var photoPath = data.photo.path + data.photo.name;
 

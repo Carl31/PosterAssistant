@@ -1,9 +1,9 @@
 {
-    "text": {
+    "vehicle": {
         "make": "Toyota",
         "model": "Corolla",
-        "year": "2022",
-        "description": "A reliable and fuel-efficient sedan, perfect for city driving."
+        "year": "2020",
+        "description": "A reliable carrr"
     },
     "template": {
         "path": "D:/Documents/GithubRepos/PosterAssistant/templates/",
