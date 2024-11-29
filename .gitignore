@@ -181,3 +181,6 @@ logs
 # Build and cache
 frontend/build/
 .vercel
+
+# Ignore the credentials.json file in the backend directory
+backend/credentials.json

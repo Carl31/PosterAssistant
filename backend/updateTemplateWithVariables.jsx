@@ -1,4 +1,4 @@
-#target photoshop
+﻿#target photoshop
 
 try {
     // Define the path to the temporary JSON file (adjust path if needed)
@@ -261,11 +261,6 @@ try {
     
         // ---------------------- END EXIT---------------------------
 
-
-
-
-
-
     } else {
         throw new Error("Failed to open JSON file at path: " + jsonFilePath.fsName);
     }
@@ -273,5 +268,6 @@ try {
     alert("Error: " + error.message);
 }
 
-// Close the ExtendScript Toolkit window
-app.quit();
+// Close the ExtendScript Toolkit window - does not work
+//$.sleep(2000);
+//app.quit();
