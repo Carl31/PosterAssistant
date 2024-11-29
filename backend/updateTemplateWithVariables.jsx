@@ -1,4 +1,11 @@
-﻿#target photoshop
+﻿// Purpose of this script:
+// 1) Places user photo
+// 2) Inserts car info texr
+// 3) Places additional pngs (if any) - note, this part probably causes errors - havent tested edge cases yet
+// 4) Saves output as PNG 
+// Closes photoshop 
+
+#target photoshop
 
 try {
     // Define the path to the temporary JSON file (adjust path if needed)
@@ -34,18 +41,13 @@ try {
         var templateFile = File(templatePath); // Path to PSD file
         var imageFile = File(photoPath); // Path to the image you want to insert
 
-        // Example usage in ExtendScript
+        // Example usage
         //alert("Make: " + make);
         //alert("Model: " + model);
         //alert("Year: " + year);
         //alert("Description: " + description);
         //alert("Template Path: " + templatePath);
         //alert("Photo Path: " + photoPath);
-
-        // You can now proceed with operations using file and imageFile
-        // Example:
-        // app.open(templateFile);
-        // app.open(imageFile);
 
 
         // Ensure Photoshop is running and open the PSD file
@@ -115,11 +117,20 @@ try {
         
         
         // Step 2: Define image variables
+        
+        // Access the "added" part of the JSON
+        var added = data.added;
+        var addedPath = data.added.path;
+        
+        // Initialize variables to store PNG paths (only for make and model pngs)
+        var makeImage = File(addedPath + added.makePng) || null;
+        var modelImage = File(addedPath + added.modelPng) || null;
     
-        var makeImage = File("D:/Documents/GithubRepos/PosterAssistant/photos/make.png"); // Replace with actual image path
-        var modelImage = File("D:/Documents/GithubRepos/PosterAssistant/photos/model.png"); // Replace with actual image path
-        var extraImage1 = File("D:/Documents/GithubRepos/PosterAssistant/photos/extra1.png"); // Replace with actual image path
-        var extraImage2 = File("D:/Documents/GithubRepos/PosterAssistant/photos/extra2.png"); // Replace with actual image path
+        // Obselete
+        //var makeImage = File("D:/Documents/GithubRepos/PosterAssistant/photos/make.png"); // Replace with actual image path
+        //var modelImage = File("D:/Documents/GithubRepos/PosterAssistant/photos/model.png"); // Replace with actual image path
+        //var extraImage1 = File("D:/Documents/GithubRepos/PosterAssistant/photos/extra1.png"); // Replace with actual image path
+        //var extraImage2 = File("D:/Documents/GithubRepos/PosterAssistant/photos/extra2.png"); // Replace with actual image path
     
     
         // Step 3: Insert text into respective layers in VAR_TEXTS folder
@@ -187,17 +198,40 @@ try {
     
     
     
-    
-    
-    
-    
         
-        // Call function for each image
+        // CALLING FUNCTION FOR EACH LAYER (inserts each png within the "added" json value) -----------------
         placeImageInLayer(makeImage, "make");
         placeImageInLayer(modelImage, "model");
-        placeImageInLayer(extraImage1, "extra1");
-        placeImageInLayer(extraImage2, "extra2");
+        
+        // Loop through keys in the "added" object, add all extra pngs (string names) to the array
+        var addPngs = [];
+        for (var key in added) {
+            // Check if the key starts with "add" and has a numeric value
+            if (key.indexOf("add") === 0) { // checks if json value starts with "add"
+                addPngs.push(added[key]);
+            }
+        }
+        
+        // Loop through all addPngs
+        // Places all additional layers in "extraX" layers. Alerts if there are more pngs in json than available "extraX" layer within the template.
+        for (var i = 0; i < addPngs.length; i++) {
+            var extraLayer = "extra" + (i + 1); // Example: extra1, extra2, extra3
+            var imageFile = new File(addedPath + addPngs[i]);
+            
+            // Check if the extra[i] layer exists
+            try {
+                var targetLayer = doc.layerSets.getByName("VAR_PNGS").artLayers.getByName(extraLayer);
+                
+                // If the layer exists, call placeImageInLayer
+                placeImageInLayer(imageFile, extraLayer);
+                
+            } catch (e) {
+                alert("No such layer: " + extraLayer);
+                break; // Stop the loop if the layer doesn't exist
+            }
+        }
     
+        // END CALLING FUNCTION OF EACH LAYER -----------------------
     
     
         // ----------------- END INSERT TEXT & PNG -----------------------

@@ -1,6 +1,7 @@
 const { spawn, exec } = require('child_process');
 const { google } = require('googleapis');
 const path = require('path');
+const fs = require('fs');
 
 // Paths
 const estkPath = 'C:\\Program Files (x86)\\Adobe\\Adobe ExtendScript Toolkit CC\\ExtendScript Toolkit.exe';
@@ -8,7 +9,9 @@ const jsxScriptPath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/bac
 const autoHotkeyPath = '"C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey.exe"';
 const autoHotkeyRunScript = path.resolve('D:/Documents/GithubRepos/PosterAssistant/backend/run_extendScript.ahk');
 const autoHotkeyExiteScript = path.resolve('D:/Documents/GithubRepos/PosterAssistant/backend/exit_extendScript.ahk');
-const credentialsPath = path.join(__dirname, 'credentials.json');
+const credentialsPath = path.join(__dirname, 'credentials.json'); // for Google drive API
+const exportFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/ExportedImage.png'); // for Google drive API
+const jsonFilePath = path.join(__dirname, 'tempData.json'); // for Google drive API
 
 // Utility function to delay execution
 function delay(ms) {
@@ -70,7 +73,7 @@ async function authenticateDrive() {
     return drive;
   }
   
-  // Upload PNG file to Google Drive
+  // Upload PNG file to Google Drive, then saves to JSON
   async function uploadToGoogleDrive() {
       try {
           const drive = await authenticateDrive();
@@ -93,6 +96,29 @@ async function authenticateDrive() {
           });
   
           console.log("File uploaded successfully. File ID:", response.data.id);
+
+          // UPDATING JSON WITH DRIVE LINK:
+          const fileId = response.data.id;
+          const driveLink = `https://drive.google.com/file/d/${fileId}/view`; // for Google drive API
+
+          try {
+            // Read the JSON file
+            const jsonData = fs.readFileSync(jsonFilePath, 'utf-8');
+            const data = JSON.parse(jsonData);
+    
+            // Add or update the "output" object with the "link" key
+            if (!data.output) {
+                data.output = {};
+            }
+            data.output.link = driveLink;
+    
+            // Write the updated JSON back to the file
+            fs.writeFileSync(jsonFilePath, JSON.stringify(data, null, 4), 'utf-8');
+            console.log('JSON file updated successfully!');
+        } catch (error) {
+            console.error('Error updating the JSON file:', error.message);
+        }
+
       } catch (err) {
           console.error("Error uploading file:", err);
       }
@@ -102,17 +128,17 @@ async function authenticateDrive() {
 // Main execution flow
 async function main() {
     try {
-        await runJSXWithESTK(); // Launch ExtendScript Toolkit
-        await delay(2000); // Wait for the script to load
-        await runAutoHotkey(autoHotkeyRunScript); // Trigger F5 in ExtendScript Toolkit
-        console.log("AutoHotkey run script executed.");
+        // await runJSXWithESTK(); // Launch ExtendScript Toolkit
+        // await delay(2000); // Wait for the script to load
+        // await runAutoHotkey(autoHotkeyRunScript); // Trigger F5 in ExtendScript Toolkit
+        // console.log("AutoHotkey run script executed.");
 
-        // Wait for some time to ensure the script finishes before exiting
-        await delay(60000); // Adjust duration as needed - WARNING - DOES NOT WORK IF SCRIPT TAKES LONGER THAN 60S
-        await exitESTK(); // Force exit ExtendScript Toolkit
+        // // Wait for some time to ensure the script finishes before exiting
+        // await delay(60000); // Adjust duration as needed - WARNING - DOES NOT WORK IF SCRIPT TAKES LONGER THAN 60S
+        // await exitESTK(); // Force exit ExtendScript Toolkit
 
         // Call function to export to Google drive
-        //uploadToGoogleDrive();
+        uploadToGoogleDrive();
     } catch (error) {
         console.error("Error during execution:", error);
     }

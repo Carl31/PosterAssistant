@@ -12,5 +12,15 @@
     "photo": {
         "path": "D:/Documents/GithubRepos/PosterAssistant/photos/",
         "name": "user_photo.png"
+    },
+    "added": {
+        "path": "D:/Documents/GithubRepos/PosterAssistant/photos/",
+        "makePng": "make.png",
+        "modelPng": "model.png",
+        "add1": "extra1.png",
+        "add2": "extra2.png"
+    },
+    "output": {
+        "link": "https://drive.google.com/file/d/1OFfL04kBZmtYMwqHE9knouCF_dGvIW-g/view"
     }
 }
