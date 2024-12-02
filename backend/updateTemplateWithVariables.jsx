@@ -9,7 +9,7 @@
 
 try {
     // Define the path to the temporary JSON file (adjust path if needed)
-    var jsonFilePath = new File("D:/Documents/GithubRepos/PosterAssistant/backend/tempData.json");
+    var jsonFilePath = new File("D:/Documents/GithubRepos/PosterAssistant/backend/output.json");
 
     // Check if the file exists
     if (!jsonFilePath.exists) {

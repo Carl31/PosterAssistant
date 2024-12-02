@@ -1,11 +1,19 @@
 // requires...
 const express = require('express');
 const connectDB = require('../db'); // import the db connection
-require("dotenv").config();
+const uploadFileContent = require('../utils/uploadFileContent');
+const readJsonFile = require('../utils/readJsonFile');
+const uploadToGoogleDrive = require('../utils/googleDriveUpload');
+const runExtendScript = require('../extendScript');
+const createJsonFile = require('../utils/createJsonFile');
+const deleteJsonFile = require('../utils/deleteJsonFile');
+const delay = require('../utils/delay');
+require("dotenv").config({ path: '../.env' });
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
 const app = express();
+const File = require('../models/file'); // mongoose schema
 
 
 // For generativeAI
@@ -22,8 +30,7 @@ const API_KEY = process.env.GOOGLE_API_KEY;
 const userImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/user_photo.png');
 const outputImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/output/resized_user_photo.png');
 // Write to tempData.json
-const jsonFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/backend/tempData.json');
-
+const jsonFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/backend/output.json');
 
 
 // Connect to the database before setting up routes
@@ -228,8 +235,66 @@ async function processImage() {
 }
 
 
-// RUN function
-processImage();
+// populates local json file (for testing purposes only)
+async function populateJsonFile(filePath) {
+  const updatedData = {
+    vehicle: {
+      make: "",
+      model: "",
+      year: "",
+      description: ""
+    },
+    template: {
+      path: "D:/Documents/GithubRepos/PosterAssistant/templates/",
+      name: "PosterAssistant-PngAndText.psd"
+    },
+    photo: {
+      path: "D:/Documents/GithubRepos/PosterAssistant/photos/",
+      name: "user_photo.png"
+    },
+    added: {
+      path: "D:/Documents/GithubRepos/PosterAssistant/photos/",
+      makePng: "make.png",
+      modelPng: "model.png",
+      add1: "extra1.png",
+      add2: "extra2.png"
+    }
+  };
+
+  return new Promise((resolve, reject) => {
+    fs.writeFile(filePath, JSON.stringify(updatedData, null, 4), 'utf8', (err) => {
+      if (err) {
+        console.error("Error updating JSON file:", err);
+        reject(err);
+      } else {
+        console.log("JSON file updated successfully:", filePath);
+        resolve();
+      }
+    });
+  });
+}
+
+
+// Orchestrator function to enforce order
+async function orchestrateFunctions() {
+  try {
+    // await createJsonFile('../output.json'); // Then run the JSON creation function
+    // await populateJsonFile('../output.json'); // once networking is finished, get json from mongo and update!
+    // await processImage(); // RUN function - processed by Gemini
+    // await runExtendScript();
+    // await uploadToGoogleDrive();
+    // await uploadFileContent('../output.json', 'output.json', 'application/json'); // upload to mongodb
+    await deleteJsonFile('../output.json');
+    // await readJsonFile('674e0d219f918cac2a149521');
+    await delay(3000);
+    console.log("All tasks completed sequentially.");
+  } catch (error) {
+    console.error("An error occurred:", error);
+  }
+}
+
+// Start the sequence
+orchestrateFunctions();
 
 
 // Export the Express app as a serverless function for Vercel
