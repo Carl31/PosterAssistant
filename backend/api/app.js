@@ -7,9 +7,11 @@ const uploadToGoogleDrive = require('../utils/googleDriveUpload');
 const runExtendScript = require('../extendScript');
 const createJsonFile = require('../utils/createJsonFile');
 const deleteJsonFile = require('../utils/deleteJsonFile');
+const { validateTemplateData, validateOrExit } = require('../utils/validateTemplateData');
 const delay = require('../utils/delay');
 require("dotenv").config({ path: '../.env' });
 const fs = require('fs');
+const fsPromises = require("fs/promises");
 const path = require('path');
 const sharp = require('sharp');
 const app = express();
@@ -153,7 +155,7 @@ const getCarInfo = async (imageBuffer) => {
 
   return carInfo = {
     make: 'Toyota',
-    model: 'Corolla',
+    model: 'Celica',
     year: '2020',
     description: 'A reliable carrr'
   };
@@ -163,74 +165,45 @@ const getCarInfo = async (imageBuffer) => {
 // Async function to handle resizing and then read the file, before sending it to Gemini API
 async function processImage() {
   try {
-    // Ensure the output directory exists for npm-sharp
+    // Ensure the output directory exists
     const outputDir = path.dirname(outputImagePath);
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
+    await fsPromises.mkdir(outputDir, { recursive: true });
 
+    // Resize the image and save it
     await sharp(userImagePath)
-      .resize(800)  // Resize to a width of 800px (maintaining aspect ratio)
+      .resize(800) // Resize to a width of 800px (maintaining aspect ratio)
       .toFile(outputImagePath);
 
     console.log("Image resized and saved to:", outputImagePath);
 
-    // Now read the resized image for the next operation
-    fs.readFile(outputImagePath, (err, imageBuffer) => {
-      if (err) {
-        console.error("Error reading the resized image:", err);
-      } else {
-        console.log("Resized image buffer ready for API request");
+    // Read the resized image
+    const imageBuffer = await fsPromises.readFile(outputImagePath);
+    console.log("Resized image buffer ready for API request");
 
+    // Call the getCarInfo function and wait for its result --- SENDS TO GEMINI
+    const carInfo = await getCarInfo(imageBuffer);
 
+    // Read and update the JSON file
+    const jsonData = await fsPromises.readFile(jsonFilePath, "utf8");
+    const tempJson = JSON.parse(jsonData);
 
-        // -------------- SEND RESIZED IMAGE TO GEMINI ----------------------
+    // Update vehicle and added fields
+    tempJson.vehicle = {
+      make: carInfo.make,
+      model: carInfo.model,
+      year: carInfo.year,
+      description: carInfo.description,
+    };
 
-        // Call the getCarInfo function with the image buffer
-        getCarInfo(imageBuffer)
-          .then((carInfo) => {
+    tempJson.added.makePng = carInfo.make.toLowerCase() + ".png";
+    tempJson.added.modelPng = carInfo.model.toLowerCase() + ".png";
 
-            if (true) {
-
-
-              // Read the existing JSON file
-              fs.readFile(jsonFilePath, 'utf8', (err, data) => {
-                if (err) {
-                  console.error("Error reading JSON file:", err);
-                  return;
-                }
-
-                try {
-                  // Parse the JSON data into an object
-                  const tempJson = JSON.parse(data);
-
-                  // Update the vehicle field with the new car info
-                  tempJson.vehicle = {
-                    make: carInfo.make,
-                    model: carInfo.model,
-                    year: carInfo.year,
-                    description: carInfo.description
-                  };
-
-                  // Write the updated JSON back to tempData.json
-                  fs.writeFile(jsonFilePath, JSON.stringify(tempJson, null, 4), (err) => {
-                    if (err) {
-                      console.error("Error writing JSON file:", err);
-                      return;
-                    }
-                    console.log("JSON file updated successfully!");
-                  });
-
-                } catch (err) {
-                  console.error("Error parsing JSON data:", err);
-                }
-              });
-            }
-          });
-      }
-    });
+    // Write the updated JSON back to the file
+    await fsPromises.writeFile(jsonFilePath, JSON.stringify(tempJson, null, 4));
+    console.log("JSON file updated successfully!");
   } catch (err) {
     console.error("Error during image processing:", err);
+    throw err; // Rethrow the error to ensure the orchestrator is aware
   }
 }
 
@@ -246,7 +219,7 @@ async function populateJsonFile(filePath) {
     },
     template: {
       path: "D:/Documents/GithubRepos/PosterAssistant/templates/",
-      name: "PosterAssistant-PngAndText.psd"
+      name: "Preset_A_1_2.psd"
     },
     photo: {
       path: "D:/Documents/GithubRepos/PosterAssistant/photos/",
@@ -254,8 +227,8 @@ async function populateJsonFile(filePath) {
     },
     added: {
       path: "D:/Documents/GithubRepos/PosterAssistant/photos/",
-      makePng: "make.png",
-      modelPng: "model.png",
+      makePng: "",
+      modelPng: "",
       add1: "extra1.png",
       add2: "extra2.png"
     }
@@ -278,18 +251,20 @@ async function populateJsonFile(filePath) {
 // Orchestrator function to enforce order
 async function orchestrateFunctions() {
   try {
-    // await createJsonFile('../output.json'); // Then run the JSON creation function
-    // await populateJsonFile('../output.json'); // once networking is finished, get json from mongo and update!
-    // await processImage(); // RUN function - processed by Gemini
+     await createJsonFile('../output.json'); // Then run the JSON creation function
+     await populateJsonFile('../output.json'); // once networking is finished, edit this function to get json from mongo and update!
+     await processImage(); // RUN function - processed by Gemini
+     await validateOrExit('../output.json'); // exit program if json is not validated
     // await runExtendScript();
     // await uploadToGoogleDrive();
     // await uploadFileContent('../output.json', 'output.json', 'application/json'); // upload to mongodb
-    await deleteJsonFile('../output.json');
+    // await deleteJsonFile('../output.json');
     // await readJsonFile('674e0d219f918cac2a149521');
     await delay(3000);
     console.log("All tasks completed sequentially.");
   } catch (error) {
     console.error("An error occurred:", error);
+    process.exit(1); // Exit with failure code
   }
 }
 

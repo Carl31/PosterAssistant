@@ -1,0 +1,4 @@
+Preset - always
+letter - version
+first number (1 or 0) - Boolean to include car model png in template
+second number (0 to 4) - Number of additional extra brand png in template
