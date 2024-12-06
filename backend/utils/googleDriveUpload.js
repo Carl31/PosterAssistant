@@ -39,7 +39,7 @@ async function uploadToGoogleDrive() {
             fields: 'id'
         });
 
-        console.log("File uploaded successfully. File ID:", response.data.id);
+        console.log("File uploaded successfully to Google Drive. File ID:", response.data.id);
 
         // UPDATING JSON WITH DRIVE LINK:
         const fileId = response.data.id;

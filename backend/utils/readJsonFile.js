@@ -13,7 +13,7 @@ async function readJsonFile(fileId) {
 
         // Decode the binary data and parse it as JSON
         const jsonData = JSON.parse(file.data.toString());
-        console.log('Decoded JSON data:', jsonData);
+        console.log('Reading JSON from MongoDB (' + fileId + '):\nDecoded JSON data:', jsonData);
 
         return jsonData;
     } catch (err) {

@@ -7,17 +7,20 @@
     },
     "template": {
         "path": "D:/Documents/GithubRepos/PosterAssistant/templates/",
-        "name": "Preset_A_1_2.psd"
+        "name": "Preset_A_0_2.psd"
     },
     "photo": {
         "path": "D:/Documents/GithubRepos/PosterAssistant/photos/",
         "name": "user_photo.png"
     },
     "added": {
-        "path": "D:/Documents/GithubRepos/PosterAssistant/photos/",
+        "path": "D:/Documents/PosterAssistantLocal/PNGS/",
         "makePng": "toyota.png",
         "modelPng": "celica.png",
-        "add1": "extra1.png",
-        "add2": "extra2.png"
+        "add1": "enkei.png",
+        "add2": "bbs.png"
+    },
+    "flags": {
+        "addModelPng": 0
     }
 }

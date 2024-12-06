@@ -195,12 +195,13 @@ async function processImage() {
       description: carInfo.description,
     };
 
+    // update pngs for make and model
     tempJson.added.makePng = carInfo.make.toLowerCase() + ".png";
     tempJson.added.modelPng = carInfo.model.toLowerCase() + ".png";
 
     // Write the updated JSON back to the file
     await fsPromises.writeFile(jsonFilePath, JSON.stringify(tempJson, null, 4));
-    console.log("JSON file updated successfully!");
+    console.log("JSON file updated successfully with GEMINI data.");
   } catch (err) {
     console.error("Error during image processing:", err);
     throw err; // Rethrow the error to ensure the orchestrator is aware
@@ -226,11 +227,11 @@ async function populateJsonFile(filePath) {
       name: "user_photo.png"
     },
     added: {
-      path: "D:/Documents/GithubRepos/PosterAssistant/photos/",
+      path: "D:/Documents/PosterAssistantLocal/PNGS/",
       makePng: "",
       modelPng: "",
-      add1: "extra1.png",
-      add2: "extra2.png"
+      add1: "enkei.png",
+      add2: "bbs.png"
     }
   };
 
@@ -251,19 +252,20 @@ async function populateJsonFile(filePath) {
 // Orchestrator function to enforce order
 async function orchestrateFunctions() {
   try {
-     await createJsonFile('../output.json'); // Then run the JSON creation function
-     await populateJsonFile('../output.json'); // once networking is finished, edit this function to get json from mongo and update!
-     await processImage(); // RUN function - processed by Gemini
-     await validateOrExit('../output.json'); // exit program if json is not validated
-    // await runExtendScript();
-    // await uploadToGoogleDrive();
-    // await uploadFileContent('../output.json', 'output.json', 'application/json'); // upload to mongodb
-    // await deleteJsonFile('../output.json');
-    // await readJsonFile('674e0d219f918cac2a149521');
+    console.log("Starting Poster Assistant Program...\n");
+    await createJsonFile('../output.json'); // Then run the JSON creation function
+    await populateJsonFile('../output.json'); // once networking is finished, edit this function to get json from mongo and update!
+    await processImage(); // RUN function - processed by Gemini
+    await validateOrExit('../output.json'); // exit program if json is not validated
+    await runExtendScript();
+    //await uploadToGoogleDrive(); // uploads output image to google drive
+    //const fileId = await uploadFileContent('../output.json', 'output.json', 'application/json'); // upload to mongodb
+    //await deleteJsonFile('../output.json');
+    //await readJsonFile(fileId);
     await delay(3000);
     console.log("All tasks completed sequentially.");
   } catch (error) {
-    console.error("An error occurred:", error);
+    console.error("An error occurred while executing Poster Assistant:", error);
     process.exit(1); // Exit with failure code
   }
 }

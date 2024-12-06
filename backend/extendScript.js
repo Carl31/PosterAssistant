@@ -42,7 +42,7 @@ function runAutoHotkey(scriptPath) {
             if (stderr) {
                 console.error(`stderr: ${stderr}`);
             }
-            console.log(`AutoHotkey script output: ${stdout}`);
+            console.log(`AutoHotkey script finished. Output: ${stdout}`);
             resolve();
         });
     });
@@ -65,7 +65,9 @@ async function main() {
         console.log("AutoHotkey run script executed.");
 
         // Wait for some time to ensure the script finishes before exiting
+        console.log("Waiting for Photoshop to finish..");
         await delay(60000); // Adjust duration as needed - WARNING - DOES NOT WORK IF SCRIPT EXECUTION TAKES LONGER THAN 60S
+        console.log("Photoshop finished.");
         await exitESTK(); // Force exit ExtendScript Toolkit
         
     } catch (error) {
