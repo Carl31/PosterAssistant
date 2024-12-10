@@ -29,7 +29,7 @@ const API_KEY = process.env.GOOGLE_API_KEY;
 
 
 // Hardcoded user image path
-const userImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/user_photo.png');
+var userImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/user_photo.png'); // gets overwritten later
 const outputImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/output/resized_user_photo.png');
 // Write to tempData.json
 const jsonFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/backend/output.json');
@@ -143,21 +143,30 @@ const getCarInfo = async (imageBuffer) => {
 
   // const response = result.response.text()
   //   .replace(/```json/g, "")
-  //   .replace(/```/g, "");;
+  //   .replace(/```/g, "");
 
+  // // Parse the JSON string into an JS object
+  // let carInfo;
+  // try {
+  //   carInfo = JSON.parse(response);
+  //   //console.log("Parsed carInfo:", carInfo);
+  // } catch (error) {
+  //   console.error("Error parsing JSON response:", error.message);
+  //   throw error; // Rethrow or handle appropriately
+  // }
 
-  // // for returning a JS object
-  // console.log(response);
-  // return response;
-
+  // // Now carInfo can be used as a JS object
+  // return carInfo;
 
   // ------------- uncomment FOR DUMMY DATA -------------------
 
   return carInfo = {
-    make: 'Toyota',
-    model: 'Celica',
-    year: '2020',
-    description: 'A reliable carrr'
+    vehicle: {
+      make: 'Nissan',
+      model: '350Z',
+      year: '2002',
+      description: "The Nissan 350Z, introduced in 2002, marked a triumphant return to Nissan's sports car heritage.  With its sleek, aggressive styling, the 350Z captivated enthusiasts. Its naturally aspirated 3.5-liter V6 engine, known as the VQ35DE, delivered thrilling performance and a distinctive exhaust note.  The 350Z offered a balanced chassis, making it a joy to drive on winding roads.  Available as a coupe or roadster, the 350Z provided an exhilarating driving experience at an accessible price point, solidifying its place as a modern classic."
+    }
   };
 };
 
@@ -189,15 +198,15 @@ async function processImage() {
 
     // Update vehicle and added fields
     tempJson.vehicle = {
-      make: carInfo.make,
-      model: carInfo.model,
-      year: carInfo.year,
-      description: carInfo.description,
+      make: carInfo.vehicle.make,
+      model: carInfo.vehicle.model,
+      year: carInfo.vehicle.year,
+      description: carInfo.vehicle.description,
     };
 
     // update pngs for make and model
-    tempJson.added.makePng = carInfo.make.toLowerCase() + ".png";
-    tempJson.added.modelPng = carInfo.model.toLowerCase() + ".png";
+    tempJson.added.makePng = carInfo.vehicle.make.toLowerCase() + ".png";
+    tempJson.added.modelPng = carInfo.vehicle.model.toLowerCase() + ".png";
 
     // Write the updated JSON back to the file
     await fsPromises.writeFile(jsonFilePath, JSON.stringify(tempJson, null, 4));
@@ -220,18 +229,18 @@ async function populateJsonFile(filePath) {
     },
     template: {
       path: "D:/Documents/GithubRepos/PosterAssistant/templates/",
-      name: "Preset_A_1_2.psd"
+      name: "Preset_B_0_0.psd"
     },
     photo: {
       path: "D:/Documents/GithubRepos/PosterAssistant/photos/",
-      name: "user_photo.png"
+      name: "user_photo.jpg"
     },
     added: {
       path: "D:/Documents/PosterAssistantLocal/PNGS/",
       makePng: "",
       modelPng: "",
-      add1: "enkei.png",
-      add2: "bbs.png"
+      add1: "",
+      add2: ""
     }
   };
 
@@ -248,6 +257,25 @@ async function populateJsonFile(filePath) {
   });
 }
 
+// function to retrieve the user photo path from json file
+function getUserPhotoPath(filePath) {
+  try {
+    // Read the file contents
+    const fileContents = fs.readFileSync(filePath, 'utf-8');
+
+    // Parse the JSON content into an object
+    const data = JSON.parse(fileContents);
+
+    // Combine photo path and name
+    const userPhotoPath = path.join(data.photo.path, data.photo.name);
+
+    return userPhotoPath;
+  } catch (error) {
+    console.error("Error reading or parsing the JSON file:", error.message);
+    return null;
+  }
+}
+
 
 // Orchestrator function to enforce order
 async function orchestrateFunctions() {
@@ -255,6 +283,9 @@ async function orchestrateFunctions() {
     console.log("Starting Poster Assistant Program...\n");
     await createJsonFile('../output.json'); // Then run the JSON creation function
     await populateJsonFile('../output.json'); // once networking is finished, edit this function to get json from mongo and update!
+
+    userImagePath = getUserPhotoPath(jsonFilePath);
+
     await processImage(); // RUN function - processed by Gemini
     await validateOrExit('../output.json'); // exit program if json is not validated
     await runExtendScript();

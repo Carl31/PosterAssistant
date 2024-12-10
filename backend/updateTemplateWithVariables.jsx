@@ -2,7 +2,8 @@
 // 1) Places user photo
 // 2) Inserts car info texr
 // 3) Places additional pngs (if any) - note, this part probably causes errors - havent tested edge cases yet
-// 4) Saves output as PNG 
+// 4) Applys styles to layers
+// 5) Saves output as PNG 
 // Closes photoshop 
 
 #target photoshop
@@ -193,6 +194,7 @@ try {
 
                 // Move the pasted image into the correct folder
                 varPngsFolder.artLayers.add(pastedLayer); // Add to the folder
+                pastedLayer.name = layerName; // Rename the layer after adding it to the folder
 
             } catch (e) {
                 alert("Error: Unable to place image in " + layerName + " layer: " + e.message);
@@ -207,16 +209,16 @@ try {
         // 1) For make and model
 
         placeImageInLayer(makeImage, "make");
-        if (addModelPngFlag) { placeImageInLayer(modelImage, "model"); }
+        if (addModelPngFlag == 1) { placeImageInLayer(modelImage, "model"); }
         
         
 
-        // 1) For extras
+        // 2) For extras
         // Loop through keys in the "added" object, add all extra pngs (string names) to the array
         var addPngs = [];
         for (var key in added) {
-            // Check if the key starts with "add" and has a numeric value
-            if (key.indexOf("add") === 0) { // checks if json value starts with "add"
+            // checks if the key starts with "add" and the value is not empty
+            if (key.indexOf("add") === 0 && added[key] !== "") { 
                 addPngs.push(added[key]);
             }
         }
@@ -249,7 +251,62 @@ try {
 
 
 
+        // ----------------- START APPLYING STLES TO LAYERS -----------------------
 
+        //  applying colour overlay
+        function applyPredefinedStyle(layerName, styleName, parentFolder) {
+            // Get the layer by name
+            var layer = findLayerByName(app.activeDocument, layerName, parentFolder);
+            if (!layer) {
+                alert("Layer not found: " + layerName);
+                return;
+            }
+
+            // Activate the layer
+            app.activeDocument.activeLayer = layer;
+
+            // Apply the saved layer style
+            try {
+                layer.applyStyle(styleName); // Apply the style by name
+            } catch (e) {
+                alert("Layer style not found: " + styleName);
+            }
+        }
+
+        // Recursive function to find a layer by name within a parent folder or globally
+        function findLayerByName(parentLayerSet, name, parentFolder) {
+            if (parentFolder) {
+                // Search only within the specified parent folder
+                for (var k = 0; k < parentLayerSet.layerSets.length; k++) {
+                    if (parentLayerSet.layerSets[k].name === parentFolder) {
+                        // If folder matches, search only within it
+                        return findLayerByName(parentLayerSet.layerSets[k], name);
+                    }
+                }
+                return null; // Folder not found or no matching layer within it
+            } else {
+                // Search globally (default behavior)
+                for (var i = 0; i < parentLayerSet.artLayers.length; i++) {
+                    if (parentLayerSet.artLayers[i].name === name) {
+                        return parentLayerSet.artLayers[i];
+                    }
+                }
+
+                for (var j = 0; j < parentLayerSet.layerSets.length; j++) {
+                    var result = findLayerByName(parentLayerSet.layerSets[j], name);
+                    if (result) {
+                        return result;
+                    }
+                }
+
+                return null; // Return null if layer not found
+            }
+        }
+
+        // Example Usage
+        applyPredefinedStyle("make", "WhiteOverlay", "VAR_PNGS"); // Apply "White Overlay" style to "MyPastedLayer"
+
+        // ----------------- END APPLYING STLES TO LAYERS -----------------------
 
 
 
@@ -263,7 +320,7 @@ try {
 
         // Step 5: Export the final project as a PNG
 
-        if (1) {
+        if (0) {
 
             // Set up PNG export options
             var exportOptions = new ExportOptionsSaveForWeb();
@@ -272,7 +329,7 @@ try {
             exportOptions.quality = 100;
 
             // Define the export file location
-            var exportFile = new File("D:/Documents/GithubRepos/PosterAssistant/photos/ExportedImage.png"); // Set the desired export path
+            var exportFile = new File("D:/Documents/GithubRepos/PosterAssistant/photos/ExportedImage.png"); // Set the desired export path - NEED TO SET THIS FROM JSON FILE
 
             // Export the document as PNG
             doc.exportDocument(exportFile, ExportType.SAVEFORWEB, exportOptions);
@@ -289,7 +346,7 @@ try {
 
         // ---------------------- EXIT---------------------------
 
-        if (1) {
+        if (0) {
 
             // Ensure no save prompt by marking the document as unmodified
             doc.dirty = false;

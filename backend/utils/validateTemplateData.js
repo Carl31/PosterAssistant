@@ -35,6 +35,19 @@ async function validateTemplateData(filePath) {
       const extraPngs = Object.keys(data.added).filter(key => key.startsWith("add") && data.added[key].trim() !== "");
       const extraPngsCountValid = secondNum === extraPngs.length;
 
+      // ------------ Adds boolean from template name into json doc:
+
+      data.flags = {
+        addModelPng: firstNum,
+      };
+      
+      // Write the updated JSON back to the file
+      await fsPromises.writeFile(filePath, JSON.stringify(data, null, 4));
+      //console.log("Inserted boolean into JSON file.");
+      
+      // ------------ Finsh adding boolean
+
+      
       // validates pngs:
       const pngsValid = await validatePngFiles(data);
   
@@ -47,18 +60,6 @@ async function validateTemplateData(filePath) {
       console.log(`Model PNG Count Valid: ${modelPngCountValid}`);
       console.log(`Extra PNGs Count Valid: ${extraPngsCountValid}`);
       console.log(`All PNGs Valid: ${pngsValid}`);
-
-      // ------------ Adds boolean from template name into json doc:
-
-      data.flags = {
-        addModelPng: firstNum,
-      };
-
-      // Write the updated JSON back to the file
-      await fsPromises.writeFile(filePath, JSON.stringify(data, null, 4));
-      //console.log("Inserted boolean into JSON file.");
-
-      // ------------ Finsh adding boolean
     
       // Return true only if all checks pass
       return modelPngCountValid && extraPngsCountValid && pngsValid;
@@ -83,6 +84,7 @@ async function validatePngFiles(data) {
     );
 
     // Check if make.png and model.png exist
+
     const [makeExists, modelExists] = await Promise.all([
       fsPromises.access(makePngPath).then(() => true).catch(() => false),
       fsPromises.access(modelPngPath).then(() => true).catch(() => false),
@@ -91,7 +93,7 @@ async function validatePngFiles(data) {
     if (!makeExists) {
       throw new Error(`Make PNG not found at ${makePngPath}`);
     }
-    if (!modelExists) {
+    if (!modelExists && data.flags.addModelPng == 1) {
       throw new Error(`Model PNG not found at ${modelPngPath}`);
     }
 
