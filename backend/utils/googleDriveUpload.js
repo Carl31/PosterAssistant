@@ -1,8 +1,12 @@
 const fs = require('fs');
 const path = require('path');
 const { google } = require('googleapis');
+const e = require('express');
 const credentialsPath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/backend/credentials.json'); // for Google drive API
-const exportFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/ExportedImage.png'); // for Google drive API
+//const posterFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/output/ExportedPoster.png'); // for Google drive API
+//const mockupFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/output/ExportedMockupImage.png'); // for Google drive API
+//const mockupFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/output/ExportedMockupImage3D.png'); // for Google drive API
+const exportsPath = "D:/Documents/GithubRepos/PosterAssistant/photos/output/";
 const jsonFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/backend/output.json'); // for Google drive API
 
 // Authenticate with the service account
@@ -13,24 +17,25 @@ async function authenticateDrive() {
     });
 
     const drive = google.drive({ version: 'v3', auth });
+    console.log("Google user authenticated successfully.");
 
     return drive;
 }
 
-// Upload PNG file to Google Drive, then saves to JSON
-async function uploadToGoogleDrive() {
+// Upload poster PNG file to Google Drive, then saves to JSON
+async function uploadPngToGoogleDrive(drive, fileName) {
     try {
-        const drive = await authenticateDrive();
-        console.log("Google user authenticated successfully.");
+        //const drive = await authenticateDrive();
+        //console.log("Google user authenticated successfully.");
 
         const fileMetadata = {
-            name: 'ExportedImage.png',
+            name: fileName + ".png",
             parents: ['1XDaRtbegICg_Mmog9bwYyVHTX1G8i9m7'] // Replace with your folder ID
         };
 
         const media = {
             mimeType: 'image/png',
-            body: fs.createReadStream(exportFilePath)
+            body: fs.createReadStream(exportsPath + fileName + ".png");
         };
 
         const response = await drive.files.create({
@@ -39,7 +44,7 @@ async function uploadToGoogleDrive() {
             fields: 'id'
         });
 
-        console.log("File uploaded successfully to Google Drive. File ID:", response.data.id);
+        console.log("File (" + fileName + ".png) uploaded successfully to Google Drive. File ID:", response.data.id);
 
         // UPDATING JSON WITH DRIVE LINK:
         const fileId = response.data.id;
@@ -54,11 +59,11 @@ async function uploadToGoogleDrive() {
             if (!data.output) {
                 data.output = {};
             }
-            data.output.link = driveLink;
+            data.output.posterLink = driveLink;
 
             // Write the updated JSON back to the file
             fs.writeFileSync(jsonFilePath, JSON.stringify(data, null, 4), 'utf-8');
-            console.log('JSON file updated successfully!');
+            console.log('JSON file updated successfully with Poster link.');
         } catch (error) {
             console.error('Error updating the JSON file:', error.message);
         }
@@ -68,4 +73,11 @@ async function uploadToGoogleDrive() {
     }
 }
 
-module.exports = uploadToGoogleDrive;
+async function main() {
+    const drive = await authenticateDrive();
+    await uploadPngToGoogleDrive(drive, "ExportedPoster");
+    await uploadPngToGoogleDrive(drive, "ExportedMockupImage");
+    await uploadPngToGoogleDrive(drive, "ExportedMockupImage3D");
+}
+
+module.exports = main;

@@ -184,3 +184,6 @@ frontend/build/
 
 # Ignore the credentials.json file in the backend directory
 backend/credentials.json
+
+# Ignore photoshop template files
+templates/

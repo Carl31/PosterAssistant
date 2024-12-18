@@ -31,14 +31,15 @@ async function validateTemplateData(filePath) {
       const secondNum = parseInt(secondNumber, 10);
   
       // Perform the checks
-      const modelPngCountValid = firstNum === 1 ? typeof data.added.modelPng === "string" && data.added.modelPng.trim() !== "" : true;
-      const extraPngs = Object.keys(data.added).filter(key => key.startsWith("add") && data.added[key].trim() !== "");
-      const extraPngsCountValid = secondNum === extraPngs.length;
+      const modelPngCountValid = firstNum === 1 ? typeof data.added.modelPng === "string" && data.added.modelPng.trim() !== "" : true; // checks if model boolean in templates matches model png in json
+      const extraPngs = Object.keys(data.added).filter(key => key.startsWith("add") && data.added[key].trim() !== ""); // counts number of valid extraPngs in json doc
+      const extraPngsCountValid = secondNum === extraPngs.length; // compares above result with number of extraPngs in template
 
       // ------------ Adds boolean from template name into json doc:
 
       data.flags = {
         addModelPng: firstNum,
+        extraPngs: secondNum,
       };
       
       // Write the updated JSON back to the file

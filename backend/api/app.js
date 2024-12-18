@@ -4,7 +4,7 @@ const connectDB = require('../db'); // import the db connection
 const uploadFileContent = require('../utils/uploadFileContent');
 const readJsonFile = require('../utils/readJsonFile');
 const uploadToGoogleDrive = require('../utils/googleDriveUpload');
-const runExtendScript = require('../extendScript');
+const runExtendScript = require('../runExtendScript');
 const createJsonFile = require('../utils/createJsonFile');
 const deleteJsonFile = require('../utils/deleteJsonFile');
 const { validateTemplateData, validateOrExit } = require('../utils/validateTemplateData');
@@ -24,13 +24,14 @@ const {
   HarmCategory,
   HarmBlockThreshold,
 } = require("@google/generative-ai");
+const { clear } = require('console');
 const MODEL_NAME = "gemini-1.5-pro";
 const API_KEY = process.env.GOOGLE_API_KEY;
 
 
 // Hardcoded user image path
 var userImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/user_photo.png'); // gets overwritten later
-const outputImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/output/resized_user_photo.png');
+const resizedImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/output/resized_user_photo.png');
 // Write to tempData.json
 const jsonFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/backend/output.json');
 
@@ -175,19 +176,19 @@ const getCarInfo = async (imageBuffer) => {
 async function processImage() {
   try {
     // Ensure the output directory exists
-    const outputDir = path.dirname(outputImagePath);
+    const outputDir = path.dirname(resizedImagePath);
     await fsPromises.mkdir(outputDir, { recursive: true });
 
     // Resize the image and save it
     await sharp(userImagePath)
       .resize(800) // Resize to a width of 800px (maintaining aspect ratio)
-      .toFile(outputImagePath);
+      .toFile(resizedImagePath);
 
-    console.log("Image resized and saved to:", outputImagePath);
+    console.log("Image resized and saved to:", resizedImagePath);
 
     // Read the resized image
-    const imageBuffer = await fsPromises.readFile(outputImagePath);
-    console.log("Resized image buffer ready for API request");
+    const imageBuffer = await fsPromises.readFile(resizedImagePath);
+    console.log("Resized image buffer ready for API request.");
 
     // Call the getCarInfo function and wait for its result --- SENDS TO GEMINI
     const carInfo = await getCarInfo(imageBuffer);
@@ -218,7 +219,7 @@ async function processImage() {
 }
 
 
-// populates local json file (for testing purposes only)
+// populates local json file (for testing purposes only) FIXME: This will be removed in the future and updated by network!
 async function populateJsonFile(filePath) {
   const updatedData = {
     vehicle: {
@@ -258,7 +259,7 @@ async function populateJsonFile(filePath) {
 }
 
 // function to retrieve the user photo path from json file
-function getUserPhotoPath(filePath) {
+async function getUserPhotoPath(filePath) {
   try {
     // Read the file contents
     const fileContents = fs.readFileSync(filePath, 'utf-8');
@@ -276,6 +277,12 @@ function getUserPhotoPath(filePath) {
   }
 }
 
+async function clearTempFiles() {
+  await deleteJsonFile('../output.json');
+  await fsPromises.unlink(resizedImagePath);
+  //await fsPromises.unlink(userImagePath);
+}
+
 
 // Orchestrator function to enforce order
 async function orchestrateFunctions() {
@@ -284,16 +291,16 @@ async function orchestrateFunctions() {
     await createJsonFile('../output.json'); // Then run the JSON creation function
     await populateJsonFile('../output.json'); // once networking is finished, edit this function to get json from mongo and update!
 
-    userImagePath = getUserPhotoPath(jsonFilePath);
+    userImagePath = await getUserPhotoPath(jsonFilePath); // overwrites hard-coded user image path with path from JSON file
 
     await processImage(); // RUN function - processed by Gemini
     await validateOrExit('../output.json'); // exit program if json is not validated
     await runExtendScript();
-    //await uploadToGoogleDrive(); // uploads output image to google drive
+    //await uploadToGoogleDrive(); // uploads output image and output mockup to google drive
     //const fileId = await uploadFileContent('../output.json', 'output.json', 'application/json'); // upload to mongodb
-    //await deleteJsonFile('../output.json');
     //await readJsonFile(fileId);
-    await delay(3000);
+    await clearTempFiles();
+    //await delay(3000);
     console.log("All tasks completed sequentially.");
   } catch (error) {
     console.error("An error occurred while executing Poster Assistant:", error);
