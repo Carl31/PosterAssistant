@@ -13,10 +13,16 @@ try {
 
     // Define the path to the temporary JSON file (adjust path if needed)
     var jsonFilePath = new File("D:/Documents/GithubRepos/PosterAssistant/backend/output.json");
-    var mockupPath = "D:/Documents/GithubRepos/PosterAssistant/templates/Poster_Assistant_MOCKUP.psd";
+    var mockupPath = "D:/Documents/GithubRepos/PosterAssistant/templates/Poster_Assistant_MOCKUP_dark.psd";
     var mockupPhotoPath = "D:/Documents/GithubRepos/PosterAssistant/photos/user_photo.png";
-    var posterExportFile = new File("D:/Documents/GithubRepos/PosterAssistant/photos/output/ExportedPoster.png"); // Set the desired export path (used for mockup input too) - NEED TO SET THIS FROM JSON FILE
-    var mockupExportFile = new File("D:/Documents/GithubRepos/PosterAssistant/photos/output/ExportedMockupImage.png"); // Set the desired export path - NEED TO SET THIS FROM JSON FILE
+    var posterExportFile = new File("D:/Documents/GithubRepos/PosterAssistant/photos/output/ExportedPoster.png"); // Set the desired export path (used for mockup input too) - NEED TO SET THIS FROM JSON FILE?
+
+    var flag_SavePsdAs = false;
+    var flag_SaveAsPng = true;
+    var flag_MockupGeneratorLight = false;
+    var flag_MockupGeneratorDark = false;
+    var flag_NotificationTxtDoc = false;
+    var flag_ExitPhotoshop = false;
 
 
     // Check if the file exists
@@ -26,7 +32,7 @@ try {
 
     // Open and read the JSON file
     if (jsonFilePath.open("r")) {
-        
+
         var jsonData = jsonFilePath.read();
         jsonFilePath.close();
 
@@ -45,7 +51,12 @@ try {
         var description = data.vehicle.description || "No Description";
         var templatePath = data.template.path + data.template.name;
         var photoPath = data.photo.path + data.photo.name;
+        var templateFileName = data.template.name;
+
+        // Flags for pngs:
         var addModelPngFlag = data.flags.addModelPng;
+        var addMakePngFlag = data.flags.addMakePng;
+        var addExtraPngsFlag = data.flags.addExtraPngs;
 
         // Replacing hardcoded paths with parsed JSON values
         var templateFile = File(templatePath); // Path to PSD file
@@ -216,42 +227,42 @@ try {
 
         // CALLING ABOVE FUNCTION FOR EACH LAYER (inserts each png which is found within the "added" value of JSON file) -----------------
 
-        // 1) For make and model
+        if (addMakePngFlag == 1) { placeImageInLayer(makeImage, "make"); } // for Make png
+        if (addModelPngFlag == 1) { placeImageInLayer(modelImage, "model"); } // for Model png
+        if (addExtraPngsFlag == 1) { // for Extra pngs
 
-        placeImageInLayer(makeImage, "make");
-        if (addModelPngFlag == 1) { placeImageInLayer(modelImage, "model"); }
+            // Loop through keys in the "added" object, add all extra pngs (string names) to the array
+            var addPngs = [];
+            for (var key in added) {
+                // checks if the key starts with "add" and the value is not empty
+                if (key.indexOf("add") === 0 && added[key] !== "") {
+                    addPngs.push(added[key]);
+                }
+            }
 
+            // Loop through all addPngs
+            // Places all additional layers in "extraX" layers. Alerts if there are more pngs in json than available "extraX" layer within the template.
+            for (var i = 0; i < addPngs.length; i++) {
+                var extraLayer = "extra" + (i + 1); // Example: extra1, extra2, extra3
+                var imageFile = new File(addedPath + "Extras/" + addPngs[i]);
 
+                // Check if the extra[i] layer exists
+                try {
+                    var targetLayer = doc.layerSets.getByName("VAR_PNGS").artLayers.getByName(extraLayer);
+                    targetLayer.visible = true;
 
-        // 2) For extras
-        // Loop through keys in the "added" object, add all extra pngs (string names) to the array
-        var addPngs = [];
-        for (var key in added) {
-            // checks if the key starts with "add" and the value is not empty
-            if (key.indexOf("add") === 0 && added[key] !== "") {
-                addPngs.push(added[key]);
+                    // If the layer exists, call placeImageInLayer
+                    placeImageInLayer(imageFile, extraLayer);
+
+                } catch (e) {
+                    alert("No such layer: " + extraLayer);
+                    break; // Stop the loop if the layer doesn't exist
+                }
             }
         }
 
-        // Loop through all addPngs
-        // Places all additional layers in "extraX" layers. Alerts if there are more pngs in json than available "extraX" layer within the template.
-        for (var i = 0; i < addPngs.length; i++) {
-            var extraLayer = "extra" + (i + 1); // Example: extra1, extra2, extra3
-            var imageFile = new File(addedPath + "Extras/" + addPngs[i]);
 
-            // Check if the extra[i] layer exists
-            try {
-                var targetLayer = doc.layerSets.getByName("VAR_PNGS").artLayers.getByName(extraLayer);
-                targetLayer.visible = true;
 
-                // If the layer exists, call placeImageInLayer
-                placeImageInLayer(imageFile, extraLayer);
-
-            } catch (e) {
-                alert("No such layer: " + extraLayer);
-                break; // Stop the loop if the layer doesn't exist
-            }
-        }
 
         // END CALLING FUNCTION OF EACH LAYER -----------------------
 
@@ -327,11 +338,107 @@ try {
 
 
 
+
+        // ----------------- START PHOTOSHOP ACTION ----------------------------
+
+        // If there is an associated action for the template, run it.
+        // NOTE: The below function doesnt work so instead I use a simple try-catch below...
+
+        //alert("Attempting action...");
+        // function actionExists(actionName, actionSet) {
+        //     try {
+        //         var actionSetCount = app.actionSets.length; // Get number of action sets
+        //         alert("ActionSetCount: "+ actionSetCount);
+        //         for (var i = 0; i < actionSetCount; i++) {
+        //             var set = app.actionSets[i];
+        //             alert(set);
+        //             if (set.name === actionSet) {
+        //                 var actionCount = set.actions.length; // Get number of actions in the set
+        //                 for (var j = 0; j < actionCount; j++) {
+        //                     alert(set.actions[j].name);
+        //                     if (set.actions[j].name === actionName) {
+        //                         return true; // Action exists
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     } catch (e) {
+        //         alert(e);
+        //         return false; // Error accessing action sets or actions
+        //     }
+        //     return false; // Action does not exist
+        // }
+
+        // Usage:
+        // var actionName = templateFileName.replace(/\.psd$/, "");
+
+        // if (actionExists(actionName, "PosterAssistant")) {  // Remove ".psd"
+        //     alert("Attempting action..." + actionName);
+        //     app.doAction(actionName, "PosterAssistant"); // Run the action
+        // }
+
+        var actionName = templateFileName.replace(/\.psd$/, "");
+        try {
+            app.doAction(actionName, "PosterAssistant"); // Run the action
+        } catch (e) {
+             // Error accessing action sets or actions
+        }
+
+        // ----------------- END PHOTOSHOP ACTION ----------------------------
+
+
+
+
+
+
+
+        // ------------------------ SAVE PSD AS -------------------------------
+
+        if (flag_SavePsdAs) {
+
+            try {
+                var doc = app.activeDocument; // Reference the active document
+
+                // Get the current timestamp
+                var now = new Date();
+                var timestamp = now.getFullYear() +
+                    ("0" + (now.getMonth() + 1)).slice(-2) +
+                    ("0" + now.getDate()).slice(-2) + "_" +
+                    ("0" + now.getHours()).slice(-2) +
+                    ("0" + now.getMinutes()).slice(-2) +
+                    ("0" + now.getSeconds()).slice(-2);
+
+                // Combine the name with the timestamp
+                var savePath = "D:/Documents/Photoshop/PosterAssistantPSDs/" + make + timestamp + ".psd"; // Save to Desktop, adjust path as needed
+
+                var saveOptions = new PhotoshopSaveOptions(); // Use Photoshop-specific save options
+                saveOptions.alphaChannels = true;
+                saveOptions.layers = true;
+
+                var saveFile = new File(savePath); // Create the file reference
+                doc.saveAs(saveFile, saveOptions, true, Extension.LOWERCASE); // Save the file
+
+                //alert("File saved successfully as " + savePath);
+            } catch (e) {
+                alert("Error saving file: " + e.message);
+            }
+
+        }
+
+        // ------------------------ END SAVE PSD AS ---------------------------
+
+
+
+
+
+
+
+
         // ---------------------- SAVE AS PNG ---------------------------
 
         // Step 5: Export the final project as a PNG
 
-        if (1) {
+        if (flag_SaveAsPng) {
 
             // Set up PNG export options
             var exportOptions = new ExportOptionsSaveForWeb();
@@ -354,143 +461,34 @@ try {
 
         // ---------------------- START MOCKUP GENERATOR ----------------------------
 
-        //var mockupFile = File(mockupPath);
-        //if (!mockupFile.exists) throw new Error("Template PSD file not found.");
-        //var doc = app.open(mockupFile);
-
-        try {
-            // Open the PSD file
-            var templateFile = File(mockupPath);
-            if (!templateFile.exists) throw new Error("Template PSD file not found.");
-            var doc = app.open(templateFile);
-
-            //var imageFile = File(mockupPhotoPath);
-            //if (!imageFile.exists) throw new Error("User image file not found.");
-
-
-            // Step 1: Insert user image on top of Layer 0 and resize
-
-            placeImageInLayer(posterExportFile, "frame");
-
-
-
-            // ---------------------- SAVE MOCKUP AS PNG ---------------------------
-
-            // Step 2: Export the final project as a PNG
-
-            if (1) {
-
-                // Set up PNG export options
-                var exportOptions = new ExportOptionsSaveForWeb();
-                exportOptions.format = SaveDocumentType.PNG;
-                exportOptions.transparency = true; // Maintain transparency if necessary
-                exportOptions.quality = 100;
-
-                // Export the document as PNG
-                doc.exportDocument(mockupExportFile, ExportType.SAVEFORWEB, exportOptions);
-
+        if (flag_MockupGeneratorLight) {
+            try {
+                //alert("Starting secondary script...");
+                var mockupTemplateFileName = "Poster_Assistant_MOCKUP"; // passed to the script
+                var userPhotoPath = "D:/Documents/GithubRepos/PosterAssistant/photos/output/ExportedPoster.png";
+                // Provide the full path to the secondary script file
+                var secondaryScriptPath = "D:/Documents/GithubRepos/PosterAssistant/backend/createMockup.jsx";
+                $.evalFile(secondaryScriptPath); // Executes the secondary script
+                //alert("Secondary script executed successfully!");
+            } catch (e) {
+                alert("Error: " + e.message);
             }
-
-            // ---------------------- END SAVE MOCKUP AS PNG ---------------------------
-
-
-
-
-
-            /// Helper function for placing an image in a layer - also selects the correct coordinates and applies mask
-            function placeImageInLayer(imageFile, layerName) {
-                try {
-                    var doc = app.activeDocument; // Reference to the active document
-                    var targetLayer = findLayerByName(doc, layerName); // Get target layer by name
-                    var targetBounds = targetLayer.bounds; // Get target layer bounds
-
-                    // Convert bounds to pixels (if not already in pixels)
-                    var x1 = targetBounds[0].as("px");
-                    var y1 = targetBounds[1].as("px");
-                    var x2 = targetBounds[2].as("px");
-                    var y2 = targetBounds[3].as("px");
-
-                    // Debug: Log the converted bounds
-                    //alert("Converted bounds (pixels): " + x1 + ", " + y1 + ", " + x2 + ", " + y2);
-
-                    // Remove the existing layer (if any)
-                    targetLayer.remove();
-
-                    // Open and paste the new image
-                    var placedImage = app.open(imageFile);
-                    placedImage.selection.selectAll();
-                    placedImage.selection.copy(); // Copy the image
-                    placedImage.close(SaveOptions.DONOTSAVECHANGES); // Close without saving
-
-                    doc.paste(); // Paste the image
-
-                    var pastedLayer = doc.activeLayer; // Get the pasted layer
-
-                    // Resize the pasted layer to fit the target layer's bounds
-                    var pastedWidth = pastedLayer.bounds[2] - pastedLayer.bounds[0];
-                    var pastedHeight = pastedLayer.bounds[3] - pastedLayer.bounds[1];
-
-                    var scaleFactorWidth = (targetBounds[2] - targetBounds[0]) / pastedWidth;
-                    var scaleFactorHeight = (targetBounds[3] - targetBounds[1]) / pastedHeight;
-                    var scaleFactor = Math.max(scaleFactorWidth, scaleFactorHeight); // Maintain aspect ratio
-
-                    pastedLayer.resize(scaleFactor * 100, scaleFactor * 100, AnchorPosition.MIDDLECENTER); // Resize the image
-
-                    // Center the image within the target layer's bounds
-                    pastedLayer.translate(
-                        (targetBounds[0] + targetBounds[2] - pastedLayer.bounds[0] - pastedLayer.bounds[2]) / 2,
-                        (targetBounds[1] + targetBounds[3] - pastedLayer.bounds[1] - pastedLayer.bounds[3]) / 2
-                    );
-
-                    // Rename the layer after adding it to the folder
-                    pastedLayer.name = layerName;
-
-                    // for testing - alert(doc.activeLayer);
-
-                    // Select the area based on the adjusted bounds
-                    doc.selection.select([
-                        [x1, y1], // Top-left corner
-                        [x2, y1], // Top-right corner
-                        [x2, y2], // Bottom-right corner
-                        [x1, y2]  // Bottom-left corner
-                    ]);
-
-                    // Apply the mask
-                    addLayerMask();
-
-
-
-
-                } catch (e) {
-                    alert("Error: Unable to place image in " + layerName + " layer: " + e.message);
-                }
-            }
-
-
-            // Function to add a layer mask revealing the current selection (uses Extendscript's action manager)
-            function addLayerMask() {
-                var idMk = charIDToTypeID("Mk  ");
-                var desc = new ActionDescriptor();
-                var idNw = charIDToTypeID("Nw  ");
-                var idChnl = charIDToTypeID("Chnl");
-                desc.putClass(idNw, idChnl);
-                var idAt = charIDToTypeID("At  ");
-                var ref = new ActionReference();
-                var idChnl2 = charIDToTypeID("Chnl");
-                var idMsk = charIDToTypeID("Msk ");
-                ref.putEnumerated(idChnl2, idChnl2, idMsk);
-                desc.putReference(idAt, ref);
-                var idUsng = charIDToTypeID("Usng");
-                var idUsrM = charIDToTypeID("UsrM");
-                var idRvlS = charIDToTypeID("RvlS");
-                desc.putEnumerated(idUsng, idUsrM, idRvlS);
-                executeAction(idMk, desc, DialogModes.NO);
-            }
-
-            //alert("User image inserted and resized successfully!");
-        } catch (error) {
-            alert("Error with mockup genration: " + error.message);
         }
+
+        if (flag_MockupGeneratorDark) {
+            try {
+                //alert("Starting secondary script...");
+                var mockupTemplateFileName = "Poster_Assistant_MOCKUP_dark"; // passed to the script
+                var userPhotoPath = "D:/Documents/GithubRepos/PosterAssistant/photos/output/ExportedPoster.png";
+                // Provide the full path to the secondary script file
+                var secondaryScriptPath = "D:/Documents/GithubRepos/PosterAssistant/backend/createMockup.jsx";
+                $.evalFile(secondaryScriptPath); // Executes the secondary script
+                //alert("Secondary script executed successfully!");
+            } catch (e) {
+                alert("Error: " + e.message);
+            }
+        }
+
 
 
         // ---------------------- END MOCKUP GENERATOR ----------------------------
@@ -501,19 +499,9 @@ try {
 
         // ---------------------- SECONDARY SCRIPT(s) ---------------------------
 
-        if (1) {
-            try {
-                //alert("Starting secondary script...");
-                var templateFileName = "Poster_Assistant_MOCKUP_1";
-                var userPhotoPath = "D:/Documents/GithubRepos/PosterAssistant/photos/output/ExpotedPoster.png";
-                // Provide the full path to the secondary script file
-                var secondaryScriptPath = "D:/Documents/GithubRepos/PosterAssistant/backend/createMockup.jsx";
-                $.evalFile(secondaryScriptPath); // Executes the secondary script
-                //alert("Secondary script executed successfully!");
-            } catch (e) {
-                alert("Error: " + e.message);
-            }
-        }
+        // DISABLED: Unfixable error: Photoshop action responsible for placing user image in template mockup is not functioning properly when executed via script.
+
+        //alert("Attempting secondary scripts...");
 
         // ---------------------- END SECONDARY SCRIPT(s) ---------------------------
 
@@ -524,7 +512,7 @@ try {
 
         // ---------------------- NOTIFICATION ---------------------------
 
-        if (0) {
+        if (flag_NotificationTxtDoc) {
             // Creates a text document to notify nodejs when completed this script
             var file = new File("D:/Documents/GithubRepos/PosterAssistant/backend/done.txt"); // Replace with your file path
             file.open("w");
@@ -540,7 +528,7 @@ try {
 
         // ---------------------- EXIT---------------------------
 
-        if (0) {
+        if (flag_ExitPhotoshop) {
 
             // Ensure no save prompt by marking the document as unmodified
             doc.dirty = false;

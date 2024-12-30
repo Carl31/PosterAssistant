@@ -7,7 +7,7 @@
     },
     "template": {
         "path": "D:/Documents/GithubRepos/PosterAssistant/templates/",
-        "name": "Preset_B_0_0.psd"
+        "name": "Preset_C_1_2.psd"
     },
     "photo": {
         "path": "D:/Documents/GithubRepos/PosterAssistant/photos/",
@@ -17,10 +17,12 @@
         "path": "D:/Documents/PosterAssistantLocal/PNGS/",
         "makePng": "nissan.png",
         "modelPng": "350z.png",
-        "add1": "",
+        "add1": "bbs.png",
         "add2": ""
     },
     "flags": {
-        "addModelPng": 0
+        "addMakePng": 1,
+        "addModelPng": 0,
+        "addExtraPngs": 1
     }
 }

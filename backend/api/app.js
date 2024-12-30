@@ -34,28 +34,29 @@ var userImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photo
 const resizedImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/output/resized_user_photo.png');
 // Write to tempData.json
 const jsonFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/backend/output.json');
+const folderOutputPath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/output/');
 
 
 // Connect to the database before setting up routes
-connectDB().then(() => {
-  console.log('No errors with DB connection.');
-}).catch((err) => {
-  console.error("Failed to connect to DB:", err);
-  process.exit(1); // Exit if DB connection fails
-});
+// connectDB().then(() => {
+//   console.log('No errors with DB connection.');
+// }).catch((err) => {
+//   console.error("Failed to connect to DB:", err);
+//   process.exit(1); // Exit if DB connection fails
+// });
 
-// Define routes
-app.get('/api', (req, res) => {
-  res.send('Hello from Express API!');
-});
+// // Define routes
+// app.get('/api', (req, res) => {
+//   res.send('Hello from Express API!');
+// });
 
-// If running locally, use app.listen
-if (process.env.NODE_ENV !== 'production') {
-  const PORT = 5000;
-  app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-  });
-}
+// // If running locally, use app.listen
+// if (process.env.NODE_ENV !== 'production') {
+//   const PORT = 5000;
+//   app.listen(PORT, () => {
+//     console.log(`Server is running on http://localhost:${PORT}`);
+//   });
+// }
 
 
 
@@ -230,17 +231,17 @@ async function populateJsonFile(filePath) {
     },
     template: {
       path: "D:/Documents/GithubRepos/PosterAssistant/templates/",
-      name: "Preset_B_0_0.psd"
+      name: "Preset_C_1_2.psd"
     },
     photo: {
       path: "D:/Documents/GithubRepos/PosterAssistant/photos/",
       name: "user_photo.jpg"
     },
     added: {
-      path: "D:/Documents/PosterAssistantLocal/PNGS/",
+      path: "D:/Documents/PosterAssistantLocal/PNGS/", //Note: jsx script adds the subpaths to each MAKE, MODEL and EXTRAS folder.
       makePng: "",
       modelPng: "",
-      add1: "",
+      add1: "bbs.png",
       add2: ""
     }
   };
@@ -279,8 +280,10 @@ async function getUserPhotoPath(filePath) {
 
 async function clearTempFiles() {
   await deleteJsonFile('../output.json');
-  await fsPromises.unlink(resizedImagePath);
+  //await fsPromises.unlink(resizedImagePath);
   //await fsPromises.unlink(userImagePath);
+  await fsPromises.rm(folderOutputPath, { recursive: true, force: true });
+  console.log("Output folder deleted successfully.");
 }
 
 
@@ -300,7 +303,7 @@ async function orchestrateFunctions() {
     //const fileId = await uploadFileContent('../output.json', 'output.json', 'application/json'); // upload to mongodb
     //await readJsonFile(fileId);
     await clearTempFiles();
-    //await delay(3000);
+    await delay(3000);
     console.log("All tasks completed sequentially.");
   } catch (error) {
     console.error("An error occurred while executing Poster Assistant:", error);

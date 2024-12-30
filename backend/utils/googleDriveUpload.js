@@ -35,7 +35,7 @@ async function uploadPngToGoogleDrive(drive, fileName) {
 
         const media = {
             mimeType: 'image/png',
-            body: fs.createReadStream(exportsPath + fileName + ".png");
+            body: fs.createReadStream(exportsPath + fileName + ".png")
         };
 
         const response = await drive.files.create({
@@ -76,8 +76,9 @@ async function uploadPngToGoogleDrive(drive, fileName) {
 async function main() {
     const drive = await authenticateDrive();
     await uploadPngToGoogleDrive(drive, "ExportedPoster");
-    await uploadPngToGoogleDrive(drive, "ExportedMockupImage");
-    await uploadPngToGoogleDrive(drive, "ExportedMockupImage3D");
+    await uploadPngToGoogleDrive(drive, "Poster_Assistant_MOCKUP");
+    //await uploadPngToGoogleDrive(drive, "ExportedMockupImage3D"); // Disabled: Photoshop action not working properly
+    await uploadPngToGoogleDrive(drive, "Poster_Assistant_MOCKUP_dark");
 }
 
 module.exports = main;

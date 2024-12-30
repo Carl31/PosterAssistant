@@ -1,5 +1,6 @@
-// Function to validate json data based on template name. (See inside /templates folder for naming conventions)
-// takes json file path
+// Function to validate (i.e. see if files are present on local drive) all the png files referenced in json.
+// Note: if just one single extra png file cannot be found, then no extra pngs will be used in the jsx script.
+// Takes json file path
 
 const fs = require("fs"); // Import file system module
 const fsPromises = require("fs/promises");
@@ -12,58 +13,46 @@ async function validateTemplateData(filePath) {
       // Read and parse the JSON file from the provided path
       const fileContent = fs.readFileSync(filePath, "utf-8");
       const data = JSON.parse(fileContent);
-  
+
       // Extract template name
       const templateName = data.template.name;
-  
-      // Extract the letter, first number, and second number using regex
-      const matches = templateName.match(/([A-Z])_(\d)_(\d)/);
-  
-      if (!matches) {
-        console.error("Template name format is invalid");
-        return false;
-      }
-  
-      const [_, letter, firstNumber, secondNumber] = matches; // Destructure regex matches
-  
-      // Convert numbers to integers for comparison
-      const firstNum = parseInt(firstNumber, 10);
-      const secondNum = parseInt(secondNumber, 10);
-  
-      // Perform the checks
-      const modelPngCountValid = firstNum === 1 ? typeof data.added.modelPng === "string" && data.added.modelPng.trim() !== "" : true; // checks if model boolean in templates matches model png in json
-      const extraPngs = Object.keys(data.added).filter(key => key.startsWith("add") && data.added[key].trim() !== ""); // counts number of valid extraPngs in json doc
-      const extraPngsCountValid = secondNum === extraPngs.length; // compares above result with number of extraPngs in template
+    
 
-      // ------------ Adds boolean from template name into json doc:
+      // validates pngs:
+      const { makePngValid, modelPngValid, extraPngsValid } = await validatePngFiles(data);
 
       data.flags = {
-        addModelPng: firstNum,
-        extraPngs: secondNum,
+        addMakePng: makePngValid ? 1 : 0,
+        addModelPng: modelPngValid ? 1 : 0,
+        addExtraPngs: extraPngsValid ? 1 : 0,
       };
       
+      // ------------ Adds boolean from template name into json doc:
+
       // Write the updated JSON back to the file
       await fsPromises.writeFile(filePath, JSON.stringify(data, null, 4));
-      //console.log("Inserted boolean into JSON file.");
+      //console.log("Updated JSON file with validation results.");
       
       // ------------ Finsh adding boolean
-
       
-      // validates pngs:
-      const pngsValid = await validatePngFiles(data);
+      
+      // DONE: Needs to update data.flags with addModelPng and addMakePng from validation checks within this function, THEN ensure that the jsx script uses these to determine whether to add them in or not.
+      // FIXME: 
+      // Check if the adobe action function works - where it only does action if its available. I think my fundAction function is broken - test with the "t" action.
+      // THEN: Start start networking!!!
   
       // Output results
       console.log(`\nTemplate INFO:`);
-      console.log(`Version: ${letter}`);
-      console.log(`Needs model png: ${firstNum == 1 ? true : false}`);
-      console.log(`Number of extra brands: ${secondNum}`);
+      console.log(`Name: ${templateName}`);
+  
+      const pngsValid = makePngValid && modelPngValid && extraPngsValid;
       console.log(`JSON Validation Results:`);
-      console.log(`Model PNG Count Valid: ${modelPngCountValid}`);
-      console.log(`Extra PNGs Count Valid: ${extraPngsCountValid}`);
-      console.log(`All PNGs Valid: ${pngsValid}`);
+      console.log(`Model PNG Valid/Useable: ${modelPngValid}`);
+      console.log(`Make PNG Valid/Useable: ${makePngValid}`);
+      console.log(`Extra PNGs Valid/Useable: ${extraPngsValid}`); // Note: says invlid if there are no extra pngs
     
       // Return true only if all checks pass
-      return modelPngCountValid && extraPngsCountValid && pngsValid;
+      return pngsValid;
   
     } catch (error) {
       console.error("JSON Validation error:", error.message);
@@ -73,65 +62,55 @@ async function validateTemplateData(filePath) {
 
 // Checks that required make, model and extra brand pngs are available as local files.
 async function validatePngFiles(data) {
-  try {
-    // Construct paths to make.png and model.png
-    const makePngPath = path.join(
-      "D:/Documents/PosterAssistantLocal/PNGS/Makes",
-      data.added.makePng
+  // Validate make.png
+  const makePngPath = path.join(
+    "D:/Documents/PosterAssistantLocal/PNGS/Makes",
+    data.added.makePng
+  );
+  const makePngValid = await fsPromises
+    .access(makePngPath)
+    .then(() => true)
+    .catch(() => false);
+
+  // Validate model.png
+  const modelPngPath = path.join(
+    "D:/Documents/PosterAssistantLocal/PNGS/Models",
+    data.added.modelPng
+  );
+  const modelPngValid = await fsPromises
+          .access(modelPngPath)
+          .then(() => true)
+          .catch(() => false);
+
+  // Validate additional PNGs
+  let addIndex = 1;
+  let extraPngsValid = true;
+
+  while (true) {
+    const addKey = `add${addIndex}`;
+    const addPng = data.added[addKey];
+
+    if (!addPng) break;
+
+    const addPngPath = path.join(
+      "D:/Documents/PosterAssistantLocal/PNGS/Extras",
+      addPng
     );
-    const modelPngPath = path.join(
-      "D:/Documents/PosterAssistantLocal/PNGS/Models",
-      data.added.modelPng
-    );
 
-    // Check if make.png and model.png exist
+    const addExists = await fsPromises
+      .access(addPngPath)
+      .then(() => true)
+      .catch(() => false);
 
-    const [makeExists, modelExists] = await Promise.all([
-      fsPromises.access(makePngPath).then(() => true).catch(() => false),
-      fsPromises.access(modelPngPath).then(() => true).catch(() => false),
-    ]);
-
-    if (!makeExists) {
-      throw new Error(`Make PNG not found at ${makePngPath}`);
-    }
-    if (!modelExists && data.flags.addModelPng == 1) {
-      throw new Error(`Model PNG not found at ${modelPngPath}`);
+    if (!addExists) {
+      extraPngsValid = false;
+      break;
     }
 
-    console.log("Make and model PNGs are valid.");
-
-    // Validate additional PNGs (add1, add2, add3, etc.)
-    let addIndex = 1; // Start from add1
-    while (true) {
-      const addKey = `add${addIndex}`;
-      const addPng = data.added[addKey];
-
-      // Stop if there is no addX key
-      if (!addPng) break;
-
-      const addPngPath = path.join(
-        "D:/Documents/PosterAssistantLocal/PNGS/Extras",
-        addPng
-      );
-
-      const addExists = await fsPromises
-        .access(addPngPath)
-        .then(() => true)
-        .catch(() => false);
-
-      if (!addExists) {
-        throw new Error(`Additional PNG not found at ${addPngPath}`);
-      }
-
-      console.log(`Additional PNG ${addKey} is valid.`);
-      addIndex++; // Check the next addX key
-    }
-
-    return true; // All validations passed
-  } catch (err) {
-    console.error("An error occurred during PNG validation:", err.message);
-    return false;
+    addIndex++;
   }
+
+  return { makePngValid, modelPngValid, extraPngsValid };
 }
 
 
@@ -140,10 +119,11 @@ async function validateOrExit(filePath) {
   console.log("Starting JSON validation...")
   const isValid = await validateTemplateData(filePath);
   if (!isValid) {
-    console.error("Validation failed. Exiting program.");
-    process.exit(1); // Terminate the program with an error code
+    //console.error("Validation failed. Exiting program.");
+    //process.exit(1); // Terminate the program with an error code
+    console.log("Validation finished: warning, some pngs not usable.");
   }
-  console.log("Validation passed.\n");
+  console.log("Validation finshed: all pngs usable.\n");
 }
   
   
