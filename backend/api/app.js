@@ -4,6 +4,7 @@ const connectDB = require('../db'); // import the db connection
 const uploadFileContent = require('../utils/uploadFileContent');
 const readJsonFile = require('../utils/readJsonFile');
 const uploadToGoogleDrive = require('../utils/googleDriveUpload');
+const downloadFromGoogleDrive = require('../utils/googleDriveDownload');
 const runExtendScript = require('../runExtendScript');
 const createJsonFile = require('../utils/createJsonFile');
 const deleteJsonFile = require('../utils/deleteJsonFile');
@@ -16,6 +17,7 @@ const path = require('path');
 const sharp = require('sharp');
 const app = express();
 const File = require('../models/file'); // mongoose schema
+const axios = require('axios');
 
 
 // For generativeAI
@@ -30,7 +32,7 @@ const API_KEY = process.env.GOOGLE_API_KEY;
 
 
 // Hardcoded user image path
-var userImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/user_photo.png'); // gets overwritten later
+var userImagePath = ""; // gets overwritten later
 const resizedImagePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/photos/output/resized_user_photo.png');
 // Write to tempData.json
 const jsonFilePath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/backend/output.json');
@@ -38,25 +40,104 @@ const folderOutputPath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/
 
 
 // Connect to the database before setting up routes
-// connectDB().then(() => {
-//   console.log('No errors with DB connection.');
-// }).catch((err) => {
-//   console.error("Failed to connect to DB:", err);
-//   process.exit(1); // Exit if DB connection fails
-// });
+connectDB().then(() => {
+  console.log('No errors with DB connection.');
 
-// // Define routes
+  // START SERVER: If running locally, use app.listen
+  if (process.env.NODE_ENV !== 'production') {
+    const PORT = 5000;
+    app.listen(PORT, () => {
+      console.log(`Server is running on http://localhost:${PORT}`);
+    });
+  }
+
+}).catch((err) => {
+  console.error("Failed to connect to DB:", err);
+  process.exit(1); // Exit if DB connection fails
+});
+
+
+// Set up middleware
+app.use(express.json());
+
+
+// Define routes
+// Listen for a string from the deployed server
+app.post('/process-object', async (req, res) => {
+  const objectId = req.body.objectId;
+
+  if (!objectId) {
+    return res.status(400).send({ error: 'Object ID is required' });
+  }
+
+  try {
+    // Query MongoDB for the JSON object
+    const jsonObject = await readJsonFile(objectId);
+    if (!jsonObject) {
+      return res.status(404).send({ error: 'Object not found in DB.' });
+    }
+
+    // Save JSON object temporarily
+    fs.writeFileSync(jsonFilePath, JSON.stringify(jsonObject));
+
+    // Extract Google Drive download link and download the user image
+    const userImageDriveUrl = jsonObject.userImageUrl;
+    userImagePath = await getUserPhotoPath(jsonFilePath); // Await the resolution of the promise
+    const response = await downloadFromGoogleDrive(userImageDriveUrl, userImagePath);
+
+    if (!response) {
+      return res.status(500).send({ error: 'Failed to download user image from Google Drive' });
+    }
+
+    // EXECUTE APP:
+    // Execute App with orchestrateAppFunctions
+    (async () => {
+      try {
+
+        var result = false;
+        result = await orchestrateAppFunctions();
+
+        if (!result.success) {
+          return res.status(500).send({ error: "Failed to process the object", details: result.error });
+        } else {
+          const newObjectId = result.newObjectId;
+
+          console.log('App executed successfully.');
+
+          // Notify the deployed server with the newObjectId
+          axios.post('https://your-deployed-server-url/notify', { objectId: newObjectId })
+            .then(() => {
+              console.log('Notified deployed server');
+              res.send({ message: 'Process completed successfully', newObjectId: newObjectId });
+            })
+            .catch(err => {
+              console.error('Error notifying deployed server:', err);
+              res.status(500).send({ error: 'Failed to notify deployed server' });
+            });
+        }
+
+      } catch (error) {
+        console.error('Error running Poster Assistant:', error);
+        res.status(500).send({ error: 'App execution failed' });
+      }
+    })();
+
+  } catch (err) {
+    console.error('Error processing object:', err);
+    res.status(500).send({ error: 'Internal server error' });
+  }
+});
+
+
+// Define test routes
 // app.get('/api', (req, res) => {
 //   res.send('Hello from Express API!');
 // });
 
-// // If running locally, use app.listen
-// if (process.env.NODE_ENV !== 'production') {
-//   const PORT = 5000;
-//   app.listen(PORT, () => {
-//     console.log(`Server is running on http://localhost:${PORT}`);
-//   });
-// }
+
+
+
+
 
 
 
@@ -173,7 +254,7 @@ const getCarInfo = async (imageBuffer) => {
 };
 
 
-// Async function to handle resizing and then read the file, before sending it to Gemini API
+// Async function to handle resizing and then read the file, before sending it to Gemini API. It then updates the JSON file based on the API response.
 async function processImage() {
   try {
     // Ensure the output directory exists
@@ -279,40 +360,42 @@ async function getUserPhotoPath(filePath) {
 }
 
 async function clearTempFiles() {
-  await deleteJsonFile('../output.json');
-  //await fsPromises.unlink(resizedImagePath);
-  //await fsPromises.unlink(userImagePath);
+  //await deleteJsonFile('../output.json'); // redundant
+  // await fsPromises.unlink(userImagePath); // doesnt work becuase of something to do with user privilages on windows??
+  await deleteJsonFile(jsonFilePath);
   await fsPromises.rm(folderOutputPath, { recursive: true, force: true });
   console.log("Output folder deleted successfully.");
 }
 
 
 // Orchestrator function to enforce order
-async function orchestrateFunctions() {
+async function orchestrateAppFunctions() {
   try {
     console.log("Starting Poster Assistant Program...\n");
-    await createJsonFile('../output.json'); // Then run the JSON creation function
-    await populateJsonFile('../output.json'); // once networking is finished, edit this function to get json from mongo and update!
+    //await createJsonFile('../output.json'); // Then run the JSON creation function
+    //await populateJsonFile('../output.json'); // once networking is finished, edit this function to get json from mongo and update!
 
     userImagePath = await getUserPhotoPath(jsonFilePath); // overwrites hard-coded user image path with path from JSON file
 
     await processImage(); // RUN function - processed by Gemini
     await validateOrExit('../output.json'); // exit program if json is not validated
     await runExtendScript();
-    //await uploadToGoogleDrive(); // uploads output image and output mockup to google drive
-    //const fileId = await uploadFileContent('../output.json', 'output.json', 'application/json'); // upload to mongodb
-    //await readJsonFile(fileId);
+    await uploadToGoogleDrive(); // uploads output image and output mockups to google drive
+    const objectId = await uploadFileContent('../output.json', 'output.json', 'application/json'); // upload to mongodb
+    await readJsonFile(objectId);
     await clearTempFiles();
     await delay(3000);
     console.log("All tasks completed sequentially.");
+    return { success: true, newObjectId: objectId };
   } catch (error) {
     console.error("An error occurred while executing Poster Assistant:", error);
-    process.exit(1); // Exit with failure code
+    //process.exit(1); // Exit with failure code
+    return { success: false, error: error.message }; // Return error object instead of exiting
   }
 }
 
-// Start the sequence
-orchestrateFunctions();
+// Start the sequence (for testing only)
+// orchestrateAppFunctions();
 
 
 // Export the Express app as a serverless function for Vercel

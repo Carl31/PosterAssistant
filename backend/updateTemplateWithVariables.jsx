@@ -17,12 +17,12 @@ try {
     var mockupPhotoPath = "D:/Documents/GithubRepos/PosterAssistant/photos/user_photo.png";
     var posterExportFile = new File("D:/Documents/GithubRepos/PosterAssistant/photos/output/ExportedPoster.png"); // Set the desired export path (used for mockup input too) - NEED TO SET THIS FROM JSON FILE?
 
-    var flag_SavePsdAs = false;
+    var flag_SavePsdAs = true;
     var flag_SaveAsPng = true;
-    var flag_MockupGeneratorLight = false;
-    var flag_MockupGeneratorDark = false;
-    var flag_NotificationTxtDoc = false;
-    var flag_ExitPhotoshop = false;
+    var flag_MockupGeneratorLight = true;
+    var flag_MockupGeneratorDark = true;
+    var flag_NotificationTxtDoc = true;
+    var flag_ExitPhotoshop = true;
 
 
     // Check if the file exists
@@ -76,6 +76,7 @@ try {
         // Ensure Photoshop is running and open the PSD file
         var file = File(templatePath); // Path to PSD file from JSON data
         var doc = app.open(file); // Open the PSD file in Photoshop
+        const templateDoc = doc;
 
 
         // STEP 1 : Insert user image on top of Layer 0 and resize
@@ -463,7 +464,7 @@ try {
 
         if (flag_MockupGeneratorLight) {
             try {
-                //alert("Starting secondary script...");
+                //alert("Starting first script...");
                 var mockupTemplateFileName = "Poster_Assistant_MOCKUP"; // passed to the script
                 var userPhotoPath = "D:/Documents/GithubRepos/PosterAssistant/photos/output/ExportedPoster.png";
                 // Provide the full path to the secondary script file
@@ -471,9 +472,11 @@ try {
                 $.evalFile(secondaryScriptPath); // Executes the secondary script
                 //alert("Secondary script executed successfully!");
             } catch (e) {
-                alert("Error: " + e.message);
+                alert("Mockup error: " + e.message);
             }
         }
+    
+    
 
         if (flag_MockupGeneratorDark) {
             try {
@@ -485,7 +488,7 @@ try {
                 $.evalFile(secondaryScriptPath); // Executes the secondary script
                 //alert("Secondary script executed successfully!");
             } catch (e) {
-                alert("Error: " + e.message);
+                alert("Mockup error: " + e.message);
             }
         }
 
@@ -511,7 +514,7 @@ try {
 
 
         // ---------------------- NOTIFICATION ---------------------------
-
+        //alert("Creating txt doc...");
         if (flag_NotificationTxtDoc) {
             // Creates a text document to notify nodejs when completed this script
             var file = new File("D:/Documents/GithubRepos/PosterAssistant/backend/done.txt"); // Replace with your file path
@@ -527,12 +530,14 @@ try {
 
 
         // ---------------------- EXIT---------------------------
-
         if (flag_ExitPhotoshop) {
-
+            
+            // make doc variable the original template instead of mockup.
+            doc = templateDoc;
+            
             // Ensure no save prompt by marking the document as unmodified
             doc.dirty = false;
-
+            
             // Close the document without saving
             doc.close(SaveOptions.DONOTSAVECHANGES);
 

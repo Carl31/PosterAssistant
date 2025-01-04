@@ -114,6 +114,7 @@ async function main() {
         await runAutoHotkey(autoHotkeyRunScript); // Trigger F5 in ExtendScript Toolkit (which runs the script)
         await waitForCompletion('D:/Documents/GithubRepos/PosterAssistant/backend/done.txt'); // checks for a done.txt which indicated script is finished.
         await exitESTK(); // Force exit ExtendScript Toolkit
+        await delay(5000); // wait for photoshop to close.
         
     } catch (error) {
         console.error("Error during execution:", error);

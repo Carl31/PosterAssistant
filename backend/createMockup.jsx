@@ -1,4 +1,4 @@
-// Purpose of this script:
+﻿// Purpose of this script:
 // Places user image perfectly in the mockup (within the "frame" layer). Export as png, exit witout saving.
 
 #target photoshop

@@ -59,7 +59,8 @@ async function uploadPngToGoogleDrive(drive, fileName) {
             if (!data.output) {
                 data.output = {};
             }
-            data.output.posterLink = driveLink;
+            //data.output.posterLink = driveLink; // FIXME: This overwrites the poster link in the json file.
+            data.output[fileName] = driveLink;
 
             // Write the updated JSON back to the file
             fs.writeFileSync(jsonFilePath, JSON.stringify(data, null, 4), 'utf-8');
@@ -77,8 +78,9 @@ async function main() {
     const drive = await authenticateDrive();
     await uploadPngToGoogleDrive(drive, "ExportedPoster");
     await uploadPngToGoogleDrive(drive, "Poster_Assistant_MOCKUP");
-    //await uploadPngToGoogleDrive(drive, "ExportedMockupImage3D"); // Disabled: Photoshop action not working properly
     await uploadPngToGoogleDrive(drive, "Poster_Assistant_MOCKUP_dark");
+    //await uploadPngToGoogleDrive(drive, "ExportedMockupImage3D"); // DISABLED: Photoshop action not working properly
+    
 }
 
 module.exports = main;
