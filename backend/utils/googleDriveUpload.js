@@ -75,6 +75,7 @@ async function uploadPngToGoogleDrive(drive, fileName) {
 }
 
 async function main() {
+    console.log("Starting Google Drive upload...");
     const drive = await authenticateDrive();
     await uploadPngToGoogleDrive(drive, "ExportedPoster");
     await uploadPngToGoogleDrive(drive, "Poster_Assistant_MOCKUP");

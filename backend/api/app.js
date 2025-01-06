@@ -18,6 +18,7 @@ const sharp = require('sharp');
 const app = express();
 const File = require('../models/file'); // mongoose schema
 const axios = require('axios');
+const ngrok = require('ngrok');
 
 
 // For generativeAI
@@ -40,21 +41,43 @@ const folderOutputPath = path.resolve('D:/Documents/GithubRepos/PosterAssistant/
 
 
 // Connect to the database before setting up routes
+console.log("Starting server...");
 connectDB().then(() => {
   console.log('No errors with DB connection.');
 
   // START SERVER: If running locally, use app.listen
   if (process.env.NODE_ENV !== 'production') {
-    const PORT = 5000;
-    app.listen(PORT, () => {
-      console.log(`Server is running on http://localhost:${PORT}`);
-    });
+    // const PORT = 80;
+    // app.listen(PORT, () => {
+    //   console.log(`Server is running on http://localhost:${PORT}`);
+    // });
+
+    // Call the startServer function
+    startServer();
+
   }
 
 }).catch((err) => {
   console.error("Failed to connect to DB:", err);
   process.exit(1); // Exit if DB connection fails
 });
+
+const startServer = async () => {
+  try {
+    const PORT = 80;
+    // Start the Express server
+    app.listen(PORT, async () => {
+      console.log(`App running on http://localhost:${PORT}`);
+
+      // Open an ngrok tunnel to your app : NOTE - this is unnecessary because I start it in the command line.
+      //const url = await ngrok.connect(PORT);
+      //console.log(`ngrok tunnel opened at ${url}`);
+    });
+  } catch (err) {
+    console.error('Error starting server or ngrok tunnel:', err);
+  }
+};
+
 
 
 // Set up middleware
@@ -67,6 +90,7 @@ app.post('/process-object', async (req, res) => {
   const objectId = req.body.objectId;
 
   if (!objectId) {
+    axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'Object ID is required' });
     return res.status(400).send({ error: 'Object ID is required' });
   }
 
@@ -74,7 +98,8 @@ app.post('/process-object', async (req, res) => {
     // Query MongoDB for the JSON object
     const jsonObject = await readJsonFile(objectId);
     if (!jsonObject) {
-      return res.status(404).send({ error: 'Object not found in DB.' });
+      axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'Object not found in DB' });
+      return res.status(404).send({ error: 'Object not found in DB' });
     }
 
     // Save JSON object temporarily
@@ -82,57 +107,56 @@ app.post('/process-object', async (req, res) => {
 
     // Extract Google Drive download link and download the user image
     const userImageDriveUrl = jsonObject.userImageUrl;
-    userImagePath = await getUserPhotoPath(jsonFilePath); // Await the resolution of the promise
+    userImagePath = await getUserPhotoPath(jsonFilePath);
+
     const response = await downloadFromGoogleDrive(userImageDriveUrl, userImagePath);
 
     if (!response) {
-      return res.status(500).send({ error: 'Failed to download user image from Google Drive' });
+      await axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'Failed to download user image from Google Drive' });
+      return; // Exit early if download failed
     }
 
     // EXECUTE APP:
-    // Execute App with orchestrateAppFunctions
     (async () => {
       try {
-
-        var result = false;
-        result = await orchestrateAppFunctions();
+        const result = await orchestrateAppFunctions();
 
         if (!result.success) {
-          return res.status(500).send({ error: "Failed to process the object", details: result.error });
+          await axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'App execution failed' });
         } else {
           const newObjectId = result.newObjectId;
 
           console.log('App executed successfully.');
 
           // Notify the deployed server with the newObjectId
-          axios.post('https://your-deployed-server-url/notify', { objectId: newObjectId })
+          axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/notify`, { objectId: newObjectId })
             .then(() => {
               console.log('Notified deployed server');
               res.send({ message: 'Process completed successfully', newObjectId: newObjectId });
             })
-            .catch(err => {
+            .catch(async (err) => {
               console.error('Error notifying deployed server:', err);
-              res.status(500).send({ error: 'Failed to notify deployed server' });
+              await axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'Failed to notify deployed server' });
             });
         }
-
       } catch (error) {
         console.error('Error running Poster Assistant:', error);
-        res.status(500).send({ error: 'App execution failed' });
+        await axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'App execution error' });
       }
     })();
-
   } catch (err) {
     console.error('Error processing object:', err);
+    await axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'Internal server error' });
     res.status(500).send({ error: 'Internal server error' });
   }
 });
 
 
-// Define test routes
-// app.get('/api', (req, res) => {
-//   res.send('Hello from Express API!');
-// });
+
+//Define test routes
+app.get('/api', (req, res) => {
+  res.send('Hello from Express API!');
+});
 
 
 
@@ -375,17 +399,24 @@ async function orchestrateAppFunctions() {
     //await createJsonFile('../output.json'); // Then run the JSON creation function
     //await populateJsonFile('../output.json'); // once networking is finished, edit this function to get json from mongo and update!
 
-    userImagePath = await getUserPhotoPath(jsonFilePath); // overwrites hard-coded user image path with path from JSON file
-
     await processImage(); // RUN function - processed by Gemini
+    sendProgressUpdate('User Image Processed by Gemini');
+
     await validateOrExit('../output.json'); // exit program if json is not validated
+    sendProgressUpdate('JSON Validated. Attempting to run Adobe script (this may take a while)...');
+
     await runExtendScript();
+    sendProgressUpdate('Adobe scripts finished');
+
     await uploadToGoogleDrive(); // uploads output image and output mockups to google drive
+    sendProgressUpdate('Poster PNGs uploaded to Google Drive');
+
     const objectId = await uploadFileContent('../output.json', 'output.json', 'application/json'); // upload to mongodb
     await readJsonFile(objectId);
     await clearTempFiles();
     await delay(3000);
     console.log("All tasks completed sequentially.");
+    sendProgressUpdate('App completed');
     return { success: true, newObjectId: objectId };
   } catch (error) {
     console.error("An error occurred while executing Poster Assistant:", error);
@@ -396,6 +427,15 @@ async function orchestrateAppFunctions() {
 
 // Start the sequence (for testing only)
 // orchestrateAppFunctions();
+
+
+const sendProgressUpdate = async (status) => {
+  try {
+    await axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/progress`, { status });
+  } catch (err) {
+    console.error('Error sending update:', err);
+  }
+};
 
 
 // Export the Express app as a serverless function for Vercel

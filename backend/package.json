@@ -17,6 +17,7 @@
     "googleapis": "^144.0.0",
     "mongodb": "^6.10.0",
     "mongoose": "^8.8.1",
+    "ngrok": "^5.0.0-beta.2",
     "sharp": "^0.33.5"
   },
   "devDependencies": {
