@@ -94,6 +94,8 @@ app.post('/process-object', async (req, res) => {
     return res.status(400).send({ error: 'Object ID is required' });
   }
 
+  console.log(`Received object ID: ${objectId}`);
+
   try {
     // Query MongoDB for the JSON object
     const jsonObject = await readJsonFile(objectId);
@@ -101,6 +103,9 @@ app.post('/process-object', async (req, res) => {
       axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'Object not found in DB' });
       return res.status(404).send({ error: 'Object not found in DB' });
     }
+
+    // Immediately acknowledge the request
+    res.send({ message: 'Request received, processing started' });
 
     // Save JSON object temporarily
     fs.writeFileSync(jsonFilePath, JSON.stringify(jsonObject));
@@ -132,12 +137,12 @@ app.post('/process-object', async (req, res) => {
           axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/notify`, { objectId: newObjectId })
             .then(() => {
               console.log('Notified deployed server');
-              res.send({ message: 'Process completed successfully', newObjectId: newObjectId });
             })
             .catch(async (err) => {
               console.error('Error notifying deployed server:', err);
               await axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'Failed to notify deployed server' });
             });
+
         }
       } catch (error) {
         console.error('Error running Poster Assistant:', error);
