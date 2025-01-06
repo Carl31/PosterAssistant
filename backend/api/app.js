@@ -126,6 +126,9 @@ app.post('/process-object', async (req, res) => {
       try {
         const result = await orchestrateAppFunctions();
 
+        // for testing:
+        // const result = { success: true, newObjectId: 123 };
+
         if (!result.success) {
           await axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'App execution failed' });
         } else {
