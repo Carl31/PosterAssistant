@@ -20,6 +20,9 @@ const File = require('../models/file'); // mongoose schema
 const axios = require('axios');
 const ngrok = require('ngrok');
 
+// FLAGS
+const TESTING_FLAG = false;
+
 
 // For generativeAI
 const {
@@ -107,24 +110,40 @@ app.post('/process-object', async (req, res) => {
     // Immediately acknowledge the request
     res.send({ message: 'Request received, processing started' });
 
-    // Save JSON object temporarily
-    fs.writeFileSync(jsonFilePath, JSON.stringify(jsonObject));
+    if (TESTING_FLAG) { // need to delete the "!"
 
-    // Extract Google Drive download link and download the user image
-    const userImageDriveUrl = jsonObject.userImageUrl;
-    userImagePath = await getUserPhotoPath(jsonFilePath);
+    } else {
+      // Save JSON object temporarily
+      fs.writeFileSync(jsonFilePath, JSON.stringify(jsonObject));
 
-    const response = await downloadFromGoogleDrive(userImageDriveUrl, userImagePath);
+      // Extract Google Drive download link and download the user image
+      const userImageDriveUrl = jsonObject.userImageUrl;
+      userImagePath = await getUserPhotoPath(jsonFilePath);
 
-    if (!response) {
-      await axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'Failed to download user image from Google Drive' });
-      return; // Exit early if download failed
+      const response = await downloadFromGoogleDrive(userImageDriveUrl, userImagePath);
+
+      if (!response) {
+        await axios.post(`https://${process.env.DEPLOYED_SERVER_URL}/api/error`, { errReason: 'Failed to download user image from Google Drive' });
+        return; // Exit early if download failed
+      }
     }
+
+
+
 
     // EXECUTE APP:
     (async () => {
       try {
-        const result = await orchestrateAppFunctions();
+
+        let result;
+
+        if (TESTING_FLAG) {
+          console.log("Running in testing mode.");
+          result = await orchestrateAppFunctionsTest();
+        } else {
+          result = await orchestrateAppFunctions();
+        }
+
 
         // for testing:
         // const result = { success: true, newObjectId: 123 };
@@ -404,14 +423,18 @@ async function clearTempFiles() {
 async function orchestrateAppFunctions() {
   try {
     console.log("Starting Poster Assistant Program...\n");
-    //await createJsonFile('../output.json'); // Then run the JSON creation function
-    //await populateJsonFile('../output.json'); // once networking is finished, edit this function to get json from mongo and update!
+
+    // Note - uncomment if testing locally
+    // await createJsonFile('../output.json'); // Then run the JSON creation function
+    // await populateJsonFile('../output.json'); // once networking is finished, edit this function to get json from mongo and update!
+    // userImagePath = await getUserPhotoPath(jsonFilePath);
 
     await processImage(); // RUN function - processed by Gemini
     sendProgressUpdate('User Image Processed by Gemini');
 
     await validateOrExit('../output.json'); // exit program if json is not validated
     sendProgressUpdate('JSON Validated. Attempting to run Adobe script (this may take a while)...');
+    await delay(500);
 
     await runExtendScript();
     sendProgressUpdate('Adobe scripts finished');
@@ -429,9 +452,73 @@ async function orchestrateAppFunctions() {
   } catch (error) {
     console.error("An error occurred while executing Poster Assistant:", error);
     //process.exit(1); // Exit with failure code
+    sendProgressUpdate('Oops. Something went wrong with the app.');
     return { success: false, error: error.message }; // Return error object instead of exiting
   }
 }
+
+// Orchestrate functions FOR FRONTEND TESTING PURPOSES ONLY
+async function orchestrateAppFunctionsTest() {
+  try {
+    console.log("Starting Poster Assistant Program...\n");
+    //await createJsonFile('../output.json'); // Then run the JSON creation function
+    //await populateJsonFile('../output.json'); // once networking is finished, edit this function to get json from mongo and update!
+
+    await delay(3000);
+    sendProgressUpdate('User Image Processed by Gemini');
+
+    await delay(3000);
+    sendProgressUpdate('JSON Validated. Attempting to run Adobe script (this may take a while)...');
+
+    await delay(3000);
+    sendProgressUpdate('Adobe scripts finished');
+
+    await delay(3000);
+    sendProgressUpdate('Poster PNGs uploaded to Google Drive');
+
+    await delay(3000);
+    console.log("All tasks completed sequentially.");
+    sendProgressUpdate('App completed');
+
+    testOutput = 
+    {
+      vehicle: {
+        make: 'Nissan',
+          model: '350Z',
+            year: '2002',
+              description: "The Nissan 350Z, introduced in 2002, marked a triumphant return to Nissan's sports car heritage.  With its sleek, aggressive styling, the 350Z captivated enthusiasts. Its naturally aspirated 3.5-liter V6 engine, known as the VQ35DE, delivered thrilling performance and a distinctive exhaust note.  The 350Z offered a balanced chassis, making it a joy to drive on winding roads.  Available as a coupe or roadster, the 350Z provided an exhilarating driving experience at an accessible price point, solidifying its place as a modern classic."
+      },
+      template: {
+        path: 'D:/Documents/GithubRepos/PosterAssistant/templates/',
+          name: 'Preset_C_1_2.psd'
+      },
+      photo: {
+        path: 'D:/Documents/GithubRepos/PosterAssistant/photos/',
+          name: 'user_photo.jpg'
+      },
+      added: {
+        path: 'D:/Documents/PosterAssistantLocal/PNGS/',
+          makePng: 'nissan.png',
+            modelPng: '350z.png',
+              add1: 'bbs.png',
+                add2: ''
+      },
+      flags: { addMakePng: 1, addModelPng: 0, addExtraPngs: 1 },
+      output: {
+        ExportedPoster: 'https://drive.google.com/file/d/1jBFXMy2qdJd6TkPTV0wuL3S7HYsEJYyh/view',
+          Poster_Assistant_MOCKUP: 'https://drive.google.com/file/d/1Af1aAKEsm6PM6USS3yRBJpdvQ6Nt_nQZ/view',
+            Poster_Assistant_MOCKUP_dark: 'https://drive.google.com/file/d/1V_9eDgJUi_pcnGnNUn6_JYHL0RXNi6Tz/view'
+      }
+    } ;
+    return { success: true, newObjectId: '67a5872cf4e2b3b047a5a069' }; // NOTE: Might need to upload correctly-formatted example output json to mongo and return its ID here. So frontend has "likely" data to work with. (use id from 67a5872cf4e2b3b047a5a069 in mongodb for this test json document)
+  } catch (error) {
+    console.error("An error occurred while executing Poster Assistant:", error);
+    //process.exit(1); // Exit with failure code
+    return { success: false, error: error.message }; // Return error object instead of exiting
+  }
+}
+
+
 
 // Start the sequence (for testing only)
 // orchestrateAppFunctions();

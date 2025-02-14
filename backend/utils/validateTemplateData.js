@@ -35,11 +35,6 @@ async function validateTemplateData(filePath) {
       
       // ------------ Finsh adding boolean
       
-      
-      // DONE: Needs to update data.flags with addModelPng and addMakePng from validation checks within this function, THEN ensure that the jsx script uses these to determine whether to add them in or not.
-      // FIXME: 
-      // Check if the adobe action function works - where it only does action if its available. I think my fundAction function is broken - test with the "t" action.
-      // THEN: Start start networking!!!
   
       // Output results
       console.log(`\nTemplate INFO:`);
@@ -82,7 +77,8 @@ async function validatePngFiles(data) {
           .then(() => true)
           .catch(() => false);
 
-  // Validate additional PNGs
+  // Validate additional PNGs (i.e. ensure they are present in local storage)
+  // FIXME: (exits if any are not found), need to edit so that it can validate the second one without the first, for example. But maybe this is the intended behaviour of the validation process?
   let addIndex = 1;
   let extraPngsValid = true;
 

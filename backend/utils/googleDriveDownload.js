@@ -27,7 +27,7 @@ function extractFileId(url) {
     if (match) {
         return match[1];
     } else {
-        throw new Error('Invalid Google Drive URL');
+        throw new Error('Invalid Google Drive URL'); // Note: this terminates the program if users drive link is invalid
     }
 }
 
@@ -87,7 +87,10 @@ async function downloadPngFromGoogleDrive(driveUrl, destinationPath) {
 
         await new Promise((resolve, reject) => {
             writer.on('finish', resolve);
-            writer.on('error', reject);
+            writer.on('error', (err) => {
+                reject(err);
+                console.log("Error downloading file: ", err);
+              });
         });
 
         console.log(`File downloaded to ${destinationPath}`);
