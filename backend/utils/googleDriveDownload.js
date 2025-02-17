@@ -99,8 +99,6 @@ async function downloadPngFromGoogleDrive(driveUrl, destinationPath) {
     } catch (error) {
         console.error('Error downloading file:', error);
     }
-
-
 }
 
 

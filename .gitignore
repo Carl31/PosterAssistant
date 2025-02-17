@@ -187,3 +187,6 @@ backend/credentials.json
 
 # Ignore photoshop template files
 templates/
+
+# Ignore all jpg photos
+photos/

@@ -111,6 +111,14 @@ app.post('/process-object', async (req, res) => {
     res.send({ message: 'Request received, processing started' });
 
     if (TESTING_FLAG) { // need to delete the "!"
+      // Save JSON object temporarily
+      fs.writeFileSync(jsonFilePath, JSON.stringify(jsonObject));
+
+      // Extract Google Drive download link and download the user image
+      const userImageDriveUrl = jsonObject.userImageUrl;
+      userImagePath = await getUserPhotoPath(jsonFilePath);
+
+      const response = await downloadFromGoogleDrive(userImageDriveUrl, userImagePath);
 
     } else {
       // Save JSON object temporarily
@@ -412,7 +420,11 @@ async function getUserPhotoPath(filePath) {
 
 async function clearTempFiles() {
   //await deleteJsonFile('../output.json'); // redundant
-  // await fsPromises.unlink(userImagePath); // doesnt work becuase of something to do with user privilages on windows??
+  // await fsPromises.unlink(userImagePath); // doesnt work becuase of something to do with user privilages on windows?? Trying again on the line below:
+  await fsPromises.chmod(userImagePath, '0777');
+  fsPromises.unlink(userImagePath).catch((err) => {
+    console.error('Error deleting user_image.jpg file:', err);
+  });
   await deleteJsonFile(jsonFilePath);
   await fsPromises.rm(folderOutputPath, { recursive: true, force: true });
   console.log("Output folder deleted successfully.");
@@ -480,36 +492,38 @@ async function orchestrateAppFunctionsTest() {
     console.log("All tasks completed sequentially.");
     sendProgressUpdate('App completed');
 
-    testOutput = 
+    await clearTempFiles();
+
+    testOutput =
     {
       vehicle: {
         make: 'Nissan',
-          model: '350Z',
-            year: '2002',
-              description: "The Nissan 350Z, introduced in 2002, marked a triumphant return to Nissan's sports car heritage.  With its sleek, aggressive styling, the 350Z captivated enthusiasts. Its naturally aspirated 3.5-liter V6 engine, known as the VQ35DE, delivered thrilling performance and a distinctive exhaust note.  The 350Z offered a balanced chassis, making it a joy to drive on winding roads.  Available as a coupe or roadster, the 350Z provided an exhilarating driving experience at an accessible price point, solidifying its place as a modern classic."
+        model: '350Z',
+        year: '2002',
+        description: "The Nissan 350Z, introduced in 2002, marked a triumphant return to Nissan's sports car heritage.  With its sleek, aggressive styling, the 350Z captivated enthusiasts. Its naturally aspirated 3.5-liter V6 engine, known as the VQ35DE, delivered thrilling performance and a distinctive exhaust note.  The 350Z offered a balanced chassis, making it a joy to drive on winding roads.  Available as a coupe or roadster, the 350Z provided an exhilarating driving experience at an accessible price point, solidifying its place as a modern classic."
       },
       template: {
         path: 'D:/Documents/GithubRepos/PosterAssistant/templates/',
-          name: 'Preset_C_1_2.psd'
+        name: 'Preset_C_1_2.psd'
       },
       photo: {
         path: 'D:/Documents/GithubRepos/PosterAssistant/photos/',
-          name: 'user_photo.jpg'
+        name: 'user_photo.jpg'
       },
       added: {
         path: 'D:/Documents/PosterAssistantLocal/PNGS/',
-          makePng: 'nissan.png',
-            modelPng: '350z.png',
-              add1: 'bbs.png',
-                add2: ''
+        makePng: 'nissan.png',
+        modelPng: '350z.png',
+        add1: 'bbs.png',
+        add2: ''
       },
       flags: { addMakePng: 1, addModelPng: 0, addExtraPngs: 1 },
       output: {
         ExportedPoster: 'https://drive.google.com/file/d/1jBFXMy2qdJd6TkPTV0wuL3S7HYsEJYyh/view',
-          Poster_Assistant_MOCKUP: 'https://drive.google.com/file/d/1Af1aAKEsm6PM6USS3yRBJpdvQ6Nt_nQZ/view',
-            Poster_Assistant_MOCKUP_dark: 'https://drive.google.com/file/d/1V_9eDgJUi_pcnGnNUn6_JYHL0RXNi6Tz/view'
+        Poster_Assistant_MOCKUP: 'https://drive.google.com/file/d/1Af1aAKEsm6PM6USS3yRBJpdvQ6Nt_nQZ/view',
+        Poster_Assistant_MOCKUP_dark: 'https://drive.google.com/file/d/1V_9eDgJUi_pcnGnNUn6_JYHL0RXNi6Tz/view'
       }
-    } ;
+    };
     return { success: true, newObjectId: '67a5872cf4e2b3b047a5a069' }; // NOTE: Might need to upload correctly-formatted example output json to mongo and return its ID here. So frontend has "likely" data to work with. (use id from 67a5872cf4e2b3b047a5a069 in mongodb for this test json document)
   } catch (error) {
     console.error("An error occurred while executing Poster Assistant:", error);
