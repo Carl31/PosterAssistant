@@ -164,8 +164,8 @@ try {
         var currentDate = new Date();
         var day = currentDate.getDate();
         var month = currentDate.getMonth() + 1; // getMonth() returns a zero-based value, so add 1
-        var year = currentDate.getFullYear().toString().substr(2, 2); // get the last two digits of the year
-        var dateText = day + "/" + month + "/" + year;
+        var yearDate = currentDate.getFullYear().toString().substr(2, 2); // get the last two digits of the year
+        var dateText = day + "/" + month + "/" + yearDate;
 
         // Step 3: Insert text into respective layers in VAR_TEXTS folder
         var varTextsFolder = doc.layerSets.getByName("VAR_TEXTS");
