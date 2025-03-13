@@ -52,11 +52,14 @@ try {
         var templatePath = data.template.path + data.template.name;
         var photoPath = data.photo.path + data.photo.name;
         var templateFileName = data.template.name;
+        var instagram = data.added.instagram;
+        var pngColour = data.added.pngColour;
 
         // Flags for pngs:
         var addModelPngFlag = data.flags.addModelPng;
         var addMakePngFlag = data.flags.addMakePng;
         var addExtraPngsFlag = data.flags.addExtraPngs;
+        var addSecondPngFlag = data.added.add2 == "" ? 0 : 1;
 
         // Replacing hardcoded paths with parsed JSON values
         var templateFile = File(templatePath); // Path to PSD file
@@ -157,14 +160,27 @@ try {
         //var extraImage2 = File("D:/Documents/GithubRepos/PosterAssistant/photos/extra2.png"); // Replace with actual image path
 
 
+        // Setting date for below assignment:
+        var currentDate = new Date();
+        var day = currentDate.getDate();
+        var month = currentDate.getMonth() + 1; // getMonth() returns a zero-based value, so add 1
+        var year = currentDate.getFullYear().toString().substr(2, 2); // get the last two digits of the year
+        var dateText = day + "/" + month + "/" + year;
+
         // Step 3: Insert text into respective layers in VAR_TEXTS folder
         var varTextsFolder = doc.layerSets.getByName("VAR_TEXTS");
 
         try {
-            varTextsFolder.artLayers.getByName("make").textItem.contents = make;
-            varTextsFolder.artLayers.getByName("model").textItem.contents = model;
+            varTextsFolder.artLayers.getByName("make").textItem.contents = make.toUpperCase();
+            varTextsFolder.artLayers.getByName("model").textItem.contents = model.toUpperCase();
             varTextsFolder.artLayers.getByName("year").textItem.contents = year;
             varTextsFolder.artLayers.getByName("description").textItem.contents = description;
+            // assigning date
+            varTextsFolder.artLayers.getByName("date").textItem.contents = dateText;
+
+            if (instagram != "") {
+                varTextsFolder.artLayers.getByName("instagram").textItem.contents = instagram;
+            }
         } catch (e) {
             alert("Error: Unable to find text layers in VAR_TEXTS folder. Check layer names.");
         }
@@ -223,6 +239,61 @@ try {
             }
         }
 
+        function placeImageInLayerExtra(imageFile, layerName) {
+            try {
+                var varPngsFolder = doc.layerSets.getByName("VAR_PNGS"); // Access folder
+                doc.activeLayer = varPngsFolder;
+                var targetLayer = varPngsFolder.artLayers.getByName(layerName); // Get target layer by name
+                var targetBounds = targetLayer.bounds; // Get target layer bounds
+
+                // Remove the existing layer (if any)
+                targetLayer.remove();
+
+                // Open and paste the new image
+                var placedImage = app.open(imageFile);
+                placedImage.selection.selectAll();
+                placedImage.selection.copy();
+                placedImage.close(SaveOptions.DONOTSAVECHANGES);
+
+                doc.paste();
+                var pastedLayer = doc.activeLayer;
+
+                // Get dimensions of pasted and target layers
+                var pastedWidth = pastedLayer.bounds[2] - pastedLayer.bounds[0];
+                var pastedHeight = pastedLayer.bounds[3] - pastedLayer.bounds[1];
+
+                var targetWidth = targetBounds[2] - targetBounds[0];
+                var targetHeight = targetBounds[3] - targetBounds[1];
+
+                // Scale factor: ensure image fits while keeping aspect ratio
+                var scaleFactorWidth = targetWidth / pastedWidth;
+                var scaleFactorHeight = targetHeight / pastedHeight;
+                var scaleFactor = Math.min(scaleFactorWidth, scaleFactorHeight);
+
+                pastedLayer.resize(scaleFactor * 100, scaleFactor * 100, AnchorPosition.MIDDLELEFT); // Resize, anchored to left
+
+                // Get new dimensions after resizing
+                var newPastedBounds = pastedLayer.bounds;
+                var newPastedWidth = newPastedBounds[2] - newPastedBounds[0];
+                var newPastedHeight = newPastedBounds[3] - newPastedBounds[1];
+
+                // Align left: Match left edge of target layer
+                var offsetX = targetBounds[0] - newPastedBounds[0]; // Align to left
+                var offsetY = (targetBounds[1] + targetBounds[3] - newPastedBounds[1] - newPastedBounds[3]) / 2; // Center vertically
+
+                pastedLayer.translate(offsetX, offsetY);
+
+                // Move the pasted image into the correct folder
+                pastedLayer.move(varPngsFolder, ElementPlacement.PLACEATEND);
+                pastedLayer.name = layerName;
+
+            } catch (e) {
+                alert("Error: Unable to place image in " + layerName + " layer: " + e.message);
+            }
+        }
+
+
+
 
 
 
@@ -253,7 +324,7 @@ try {
                     targetLayer.visible = true;
 
                     // If the layer exists, call placeImageInLayer
-                    placeImageInLayer(imageFile, extraLayer);
+                    placeImageInLayerExtra(imageFile, extraLayer);
 
                 } catch (e) {
                     alert("No such layer: " + extraLayer);
@@ -278,10 +349,25 @@ try {
 
         //  applying colour overlay style
         function applyPredefinedStyle(layerName, styleName, parentFolder) {
+            // prevents applying style if unnessesary
+            if ((layerName == "make") && (addMakePngFlag == 0)) {
+                return;
+            }
+            if ((layerName == "model") && (addModelPngFlag == 0)) {
+                return;
+            }
+            if ((layerName == "extra1") && (addExtraPngsFlag == 0)) {
+                return;
+            }
+            if ((layerName == "extra2") && (addSecondPngFlag == 0)) {
+                return;
+            }
+
+
             // Get the layer by name
             var layer = findLayerByName(app.activeDocument, layerName, parentFolder);
             if (!layer) {
-                alert("Layer not found: " + layerName);
+                // alert("Layer not found: " + layerName);
                 return;
             }
 
@@ -327,7 +413,22 @@ try {
         }
 
         // Example Usage
-        applyPredefinedStyle("make", "WhiteOverlay", "VAR_PNGS"); // Apply "White Overlay" style to "MyPastedLayer"
+        if (pngColour == "white") {
+            applyPredefinedStyle("make", "WhiteOverlay", "VAR_PNGS"); // Apply "White Overlay" style to "MyPastedLayer"
+            applyPredefinedStyle("model", "WhiteOverlay", "VAR_PNGS");
+            applyPredefinedStyle("extra1", "WhiteOverlay", "VAR_PNGS");
+            applyPredefinedStyle("extra2", "WhiteOverlay", "VAR_PNGS");
+        }
+        else if (pngColour == "black") {
+            applyPredefinedStyle("make", "BlackOverlay", "VAR_PNGS"); // Apply "White Overlay" style to "MyPastedLayer"
+            applyPredefinedStyle("model", "BlackOverlay", "VAR_PNGS");
+            applyPredefinedStyle("extra1", "BlackOverlay", "VAR_PNGS");
+            applyPredefinedStyle("extra2", "BlackOverlay", "VAR_PNGS");
+        }
+        else {
+            alert("Invalid pngColour value: " + pngColour);
+        }
+
 
         // ----------------- END APPLYING STLES TO LAYERS -----------------------
 
@@ -380,9 +481,9 @@ try {
 
         var actionName = templateFileName.replace(/\.psd$/, "");
         try {
-            app.doAction(actionName, "PosterAssistant"); // Run the action
+            //app.doAction(actionName, "PosterAssistant"); // Run the action // TODO: uncomment this line if wanting to do an adobe action for a speicific template
         } catch (e) {
-             // Error accessing action sets or actions
+            // Error accessing action sets or actions
         }
 
         // ----------------- END PHOTOSHOP ACTION ----------------------------
@@ -475,8 +576,8 @@ try {
                 alert("Mockup error: " + e.message);
             }
         }
-    
-    
+
+
 
         if (flag_MockupGeneratorDark) {
             try {
@@ -531,13 +632,13 @@ try {
 
         // ---------------------- EXIT---------------------------
         if (flag_ExitPhotoshop) {
-            
+
             // make doc variable the original template instead of mockup.
             doc = templateDoc;
-            
+
             // Ensure no save prompt by marking the document as unmodified
             doc.dirty = false;
-            
+
             // Close the document without saving
             doc.close(SaveOptions.DONOTSAVECHANGES);
 

@@ -236,7 +236,7 @@ const getCarInfo = async (imageBuffer) => {
 
   const parts = [
     {
-      text: `Accurately identify the vehicle make, model and year with your analysis. Then write a description of that exact model with that year. Ensure the description is around 100 words. Please respond in the following JSON format:
+      text: `Accurately identify the vehicle make, model and year with your analysis. Then write a description of that exact model with that year. Ensure the description is around 100 words and fun to read. Please respond in the following JSON format:
 
     {
       "vehicle": {
@@ -277,39 +277,39 @@ const getCarInfo = async (imageBuffer) => {
 
   // ------------- uncomment FOR GEMINI DATA -------------------
 
-  // const result = await model.generateContent({
-  //   contents: [{ role: "user", parts }],
-  //   generationConfig,
-  //   safetySettings,
-  // });
+  const result = await model.generateContent({
+    contents: [{ role: "user", parts }],
+    generationConfig,
+    safetySettings,
+  });
 
-  // const response = result.response.text()
-  //   .replace(/```json/g, "")
-  //   .replace(/```/g, "");
+  const response = result.response.text()
+    .replace(/```json/g, "")
+    .replace(/```/g, "");
 
-  // // Parse the JSON string into an JS object
-  // let carInfo;
-  // try {
-  //   carInfo = JSON.parse(response);
-  //   //console.log("Parsed carInfo:", carInfo);
-  // } catch (error) {
-  //   console.error("Error parsing JSON response:", error.message);
-  //   throw error; // Rethrow or handle appropriately
-  // }
+  // Parse the JSON string into an JS object
+  let carInfo;
+  try {
+    carInfo = JSON.parse(response);
+    //console.log("Parsed carInfo:", carInfo);
+  } catch (error) {
+    console.error("Error parsing JSON response:", error.message);
+    throw error; // Rethrow or handle appropriately
+  }
 
-  // // Now carInfo can be used as a JS object
-  // return carInfo;
+  // Now carInfo can be used as a JS object
+  return carInfo;
 
   // ------------- uncomment FOR DUMMY DATA -------------------
 
-  return carInfo = {
-    vehicle: {
-      make: 'Nissan',
-      model: '350Z',
-      year: '2002',
-      description: "The Nissan 350Z, introduced in 2002, marked a triumphant return to Nissan's sports car heritage.  With its sleek, aggressive styling, the 350Z captivated enthusiasts. Its naturally aspirated 3.5-liter V6 engine, known as the VQ35DE, delivered thrilling performance and a distinctive exhaust note.  The 350Z offered a balanced chassis, making it a joy to drive on winding roads.  Available as a coupe or roadster, the 350Z provided an exhilarating driving experience at an accessible price point, solidifying its place as a modern classic."
-    }
-  };
+  // return carInfo = {
+  //   vehicle: {
+  //     make: 'Nissan',
+  //     model: '350Z',
+  //     year: '2002',
+  //     description: "The Nissan 350Z, introduced in 2002, marked a triumphant return to Nissan's sports car heritage.  With its sleek, aggressive styling, the 350Z captivated enthusiasts. Its naturally aspirated 3.5-liter V6 engine, known as the VQ35DE, delivered thrilling performance and a distinctive exhaust note.  The 350Z offered a balanced chassis, making it a joy to drive on winding roads.  Available as a coupe or roadster, the 350Z provided an exhilarating driving experience at an accessible price point, solidifying its place as a modern classic."
+  //   }
+  // };
 };
 
 
