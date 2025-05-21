@@ -91,7 +91,9 @@ try {
 
 
         if (imageFile.exists) {
-            var bottomLayer = doc.layers[doc.layers.length - 1]; // Select the bottom-most layer
+            //var bottomLayer = doc.layers[doc.layers.length - 1]; // Select the bottom-most layer
+            var bottomLayer = doc.layers.getByName("Layer 0"); // Select layer "Layer 0"
+
             var importedImage = app.open(imageFile); // Open the image to insert
             importedImage.selection.selectAll();
             importedImage.selection.copy(); // Copy image contents
@@ -162,8 +164,8 @@ try {
 
         // Setting date for below assignment:
         var currentDate = new Date();
-        var day = currentDate.getDate();
-        var month = currentDate.getMonth() + 1; // getMonth() returns a zero-based value, so add 1
+        var day = currentDate.getDate().toString().padStart(2, '0');
+        var month = (currentDate.getMonth() + 1).toString().padStart(2, '0'); // getMonth() returns a zero-based value, so add 1
         var yearDate = currentDate.getFullYear().toString().substr(2, 2); // get the last two digits of the year
         var dateText = day + "/" + month + "/" + yearDate;
 
@@ -182,7 +184,7 @@ try {
                 varTextsFolder.artLayers.getByName("instagram").textItem.contents = instagram;
             }
         } catch (e) {
-            alert("Error: Unable to find text layers in VAR_TEXTS folder. Check layer names.");
+            // alert("Error: Unable to find text layers in VAR_TEXTS folder. Check layer names."); // Removed alert so that app runs even if make/model/year/desc is hidden in the template.
         }
 
 

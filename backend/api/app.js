@@ -31,7 +31,7 @@ const {
   HarmBlockThreshold,
 } = require("@google/generative-ai");
 const { clear } = require('console');
-const MODEL_NAME = "gemini-1.5-pro";
+const MODEL_NAME = "gemini-1.5-pro"; // TODO: change to "gemini-2.0-flash" as google is disconnecting gemini-1.5-pro in September!
 const API_KEY = process.env.GOOGLE_API_KEY;
 
 
@@ -421,10 +421,12 @@ async function getUserPhotoPath(filePath) {
 async function clearTempFiles() {
   //await deleteJsonFile('../output.json'); // redundant
   // await fsPromises.unlink(userImagePath); // doesnt work becuase of something to do with user privilages on windows?? Trying again on the line below:
-  await fsPromises.chmod(userImagePath, '0777');
-  fsPromises.unlink(userImagePath).catch((err) => {
-    console.error('Error deleting user_image.jpg file:', err);
-  });
+
+  // Below doesnt work when running the app for a consecutive second time
+  // await fsPromises.chmod(userImagePath, '0777');
+  // fsPromises.unlink(userImagePath).catch((err) => {
+  //   console.error('Error deleting user_image.jpg file:', err);
+  // });
   await deleteJsonFile(jsonFilePath);
   await fsPromises.rm(folderOutputPath, { recursive: true, force: true });
   console.log("Output folder deleted successfully.");

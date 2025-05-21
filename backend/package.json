@@ -19,6 +19,7 @@
     "mongoose": "^8.8.1",
     "ngrok": "^5.0.0-beta.2",
     "promisify": "^0.0.3",
+    "psd": "^0.0.3",
     "sharp": "^0.33.5"
   },
   "devDependencies": {
